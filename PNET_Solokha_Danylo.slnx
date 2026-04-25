@@ -1,0 +1,6 @@
+<Solution>
+  <Project Path="PNET_Solokha_Danylo.Application/PNET_Solokha_Danylo.Application.csproj" />
+  <Project Path="PNET_Solokha_Danylo.Blazor/PNET_Solokha_Danylo.Blazor.csproj" />
+  <Project Path="PNET_Solokha_Danylo.Domain/PNET_Solokha_Danylo.Domain.csproj" />
+  <Project Path="PNET_Solokha_Danylo.Infrastructure/PNET_Solokha_Danylo.Infrastructure.csproj" />
+</Solution>
