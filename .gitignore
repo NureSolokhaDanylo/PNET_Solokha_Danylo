@@ -13,6 +13,10 @@
 
 *.note.*
 
+*.docx
+*.pdf
+*.drawio.bkp
+
 # User-specific files (MonoDevelop/Xamarin Studio)
 *.userprefs
 

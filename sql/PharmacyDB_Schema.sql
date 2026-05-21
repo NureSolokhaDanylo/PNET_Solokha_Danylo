@@ -78,12 +78,15 @@ CREATE TABLE SalesArchive (
 
 CREATE TABLE SystemAudit (
     LogId INT IDENTITY(1,1) PRIMARY KEY,
+    LogDate DATETIME DEFAULT GETDATE(),
+    Severity NVARCHAR(20) DEFAULT 'INFO',
     ActionType NVARCHAR(50),
     TableName NVARCHAR(50),
     RecordId INT,
-    OldValue NVARCHAR(MAX),
-    NewValue NVARCHAR(MAX),
-    LogDate DATETIME DEFAULT GETDATE(),
-    UserInfo NVARCHAR(100) DEFAULT CURRENT_USER
+    ColumnName NVARCHAR(50) NULL,
+    OldValue NVARCHAR(MAX) NULL,
+    NewValue NVARCHAR(MAX) NULL,
+    UserName NVARCHAR(100) DEFAULT CURRENT_USER,    
+    AdditionalInfo NVARCHAR(MAX) NULL
 );
 GO

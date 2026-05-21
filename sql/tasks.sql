@@ -11,6 +11,18 @@ AS
 BEGIN
     SET NOCOUNT ON;
 
+    IF @Name IS NULL OR LTRIM(@Name) = ''
+    BEGIN
+        RAISERROR('Error: Supplier Name cannot be empty.', 16, 1);
+        RETURN;
+    END
+
+    IF @Country IS NULL OR LTRIM(@Country) = ''
+    BEGIN
+        RAISERROR('Error: Supplier Country cannot be empty.', 16, 2);
+        RETURN;
+    END
+
     INSERT INTO Suppliers (Name, Country, Notes, LastAuditDate)
     VALUES (@Name, @Country, @Notes, GETDATE());
 END;
@@ -32,18 +44,40 @@ BEGIN
         RETURN;
     END
 
+    IF @BatchNumber IS NULL OR LTRIM(@BatchNumber) = ''
+    BEGIN
+        RAISERROR('Error: Batch Number cannot be empty.', 16, 2);
+        RETURN;
+    END
+
     IF (@ExpiryDate > GETDATE()) AND (@Quantity >= 1)
     BEGIN
-        INSERT INTO Inventory (MedicineId, BatchNumber, ExpiryDate, Quantity)
-        VALUES (@MedicineId, @BatchNumber, @ExpiryDate, @Quantity);
+        BEGIN TRY
+            BEGIN TRANSACTION;
 
-        UPDATE Medicines
-        SET TotalStock = TotalStock + @Quantity
-        WHERE MedicineId = @MedicineId;
+            INSERT INTO Inventory (MedicineId, BatchNumber, ExpiryDate, Quantity)
+            VALUES (@MedicineId, @BatchNumber, @ExpiryDate, @Quantity);
+
+            UPDATE Medicines
+            SET TotalStock = TotalStock + @Quantity
+            WHERE MedicineId = @MedicineId;
+
+            COMMIT TRANSACTION;
+        END TRY
+        BEGIN CATCH
+            IF @@TRANCOUNT > 0
+                ROLLBACK TRANSACTION;
+            
+            DECLARE @ErrorMessage NVARCHAR(4000) = ERROR_MESSAGE();
+            DECLARE @ErrorSeverity INT = ERROR_SEVERITY();
+            DECLARE @ErrorState INT = ERROR_STATE();
+
+            RAISERROR(@ErrorMessage, @ErrorSeverity, @ErrorState);
+        END CATCH
     END
     ELSE
     BEGIN
-        RAISERROR('Error: Invalid expiry date or quantity.', 16, 1);
+        RAISERROR('Error: Invalid expiry date or quantity.', 16, 3);
     END
 END;
 GO
@@ -86,9 +120,8 @@ RETURN
     SELECT
         s.SupplierId,
         s.Name AS SupplierName,
-        SUM(m.BasePrice * i.Quantity) AS TotalValue
-    FROM Inventory i
-    JOIN Medicines m ON m.MedicineId = i.MedicineId
+        SUM(m.BasePrice * m.TotalStock) AS TotalValue
+    FROM Medicines m
     JOIN Suppliers s ON s.SupplierId = m.SupplierId
     GROUP BY s.SupplierId, s.Name
 );
@@ -104,11 +137,13 @@ BEGIN
 
     IF UPDATE(BasePrice)
     BEGIN
-        INSERT INTO SystemAudit (ActionType, TableName, RecordId, OldValue, NewValue)
+        INSERT INTO SystemAudit (Severity, ActionType, TableName, RecordId, ColumnName, OldValue, NewValue)
         SELECT
+            'INFO',
             'PRICE_CHANGE',
             'Medicines',
             i.MedicineId,
+            'BasePrice',
             CAST(d.BasePrice AS NVARCHAR(MAX)),
             CAST(i.BasePrice AS NVARCHAR(MAX))
         FROM inserted i
@@ -132,7 +167,7 @@ BEGIN
     JOIN Sales s ON m.MedicineId = s.MedicineId
     WHERE m.SupplierId = @SupplierId
     GROUP BY m.MedicineId, m.Name
-    ORDER BY SUM(s.SoldPrice * s.Quantity) DESC;
+    ORDER BY SUM(s.SoldPrice * s.Quantity), m.Name DESC;
 
     IF @TopMedicineName IS NOT NULL
     BEGIN
@@ -159,28 +194,48 @@ BEGIN
 
     DECLARE @SaleId INT, @MedicineId INT, @Quantity INT, @SaleDate DATETIME;
     
-    DECLARE sale_cursor CURSOR SCROLL FOR
+    DECLARE sale_cursor CURSOR LOCAL FOR
     SELECT s.SaleId, s.MedicineId, s.Quantity, s.SaleDate
     FROM Sales s
     JOIN Medicines m ON s.MedicineId = m.MedicineId
     WHERE m.CategoryId = @CategoryId AND s.Quantity < @k;
 
-    OPEN sale_cursor;
+    BEGIN TRY
+        BEGIN TRANSACTION;
 
-    FETCH NEXT FROM sale_cursor INTO @SaleId, @MedicineId, @Quantity, @SaleDate;
-
-    WHILE @@FETCH_STATUS = 0
-    BEGIN
-        INSERT INTO SalesArchive (SaleId, MedicineId, Quantity, SaleDate, Reason)
-        VALUES (@SaleId, @MedicineId, @Quantity, @SaleDate, 'Small sale archive');
-
-        DELETE FROM Sales WHERE SaleId = @SaleId;
-
+        OPEN sale_cursor;
         FETCH NEXT FROM sale_cursor INTO @SaleId, @MedicineId, @Quantity, @SaleDate;
-    END
 
-    CLOSE sale_cursor;
-    DEALLOCATE sale_cursor;
+        WHILE @@FETCH_STATUS = 0
+        BEGIN
+            INSERT INTO SalesArchive (SaleId, MedicineId, Quantity, SaleDate, Reason)
+            VALUES (@SaleId, @MedicineId, @Quantity, @SaleDate, 'Small sale archive');
+
+            DELETE FROM Sales WHERE SaleId = @SaleId;
+
+            FETCH NEXT FROM sale_cursor INTO @SaleId, @MedicineId, @Quantity, @SaleDate;
+        END
+
+        CLOSE sale_cursor;
+        DEALLOCATE sale_cursor;
+
+        COMMIT TRANSACTION;
+    END TRY
+    BEGIN CATCH
+        IF @@TRANCOUNT > 0
+            ROLLBACK TRANSACTION;
+
+        IF (SELECT CURSOR_STATUS('local','sale_cursor')) >= 0
+        BEGIN
+            CLOSE sale_cursor;
+            DEALLOCATE sale_cursor;
+        END
+
+        DECLARE @ErrMsg NVARCHAR(4000) = ERROR_MESSAGE(),
+                @ErrSev INT = ERROR_SEVERITY(),
+                @ErrSt INT = ERROR_STATE();
+        RAISERROR(@ErrMsg, @ErrSev, @ErrSt);
+    END CATCH
 END;
 GO
 
@@ -194,12 +249,17 @@ BEGIN
 
     DECLARE @CurrentTime TIME = CAST(GETDATE() AS TIME);
 
-    IF @CurrentTime > '20:00:00' OR @CurrentTime < '08:00:00'
+    IF @CurrentTime > '10:00:00' OR @CurrentTime < '08:00:00'
     BEGIN
-        INSERT INTO SystemAudit (ActionType, TableName, RecordId, NewValue)
-        VALUES ('SECURITY_ALERT', 'Inventory', NULL, 'Attempted stock modification in non-working hours');
+        DECLARE @Action NVARCHAR(50) = CASE 
+            WHEN EXISTS(SELECT * FROM inserted) AND EXISTS(SELECT * FROM deleted) THEN 'UNAUTHORIZED_UPDATE'
+            ELSE 'UNAUTHORIZED_DELETE'
+        END;
 
-        RAISERROR('Stock modification is prohibited between 20:00 and 08:00.', 16, 1);
+        INSERT INTO SystemAudit (Severity, ActionType, TableName, AdditionalInfo)
+        VALUES ('SECURITY', @Action, 'Inventory', 'Attempted stock modification at ' + CAST(@CurrentTime AS NVARCHAR(20)));
+
+        RAISERROR('Stock modification is prohibited after hours.', 16, 1);
         ROLLBACK TRANSACTION;
     END
 END;
@@ -213,12 +273,13 @@ AS
 BEGIN
     SET NOCOUNT ON;
 
-    INSERT INTO SystemAudit (ActionType, TableName, RecordId, NewValue)
+    INSERT INTO SystemAudit (Severity, ActionType, TableName, RecordId, NewValue)
     SELECT 
-        'DELIVERY_LOG',
+        'INFO',
+        'DELIVERY',
         'Inventory',
         i.InventoryId,
-        'Last delivery: Batch ' + i.BatchNumber + ', Quantity: ' + CAST(i.Quantity AS NVARCHAR(10)) + ' pcs.'
+        'Batch: ' + i.BatchNumber + ', Qty: ' + CAST(i.Quantity AS NVARCHAR(10))
     FROM inserted i;
 END;
 GO
