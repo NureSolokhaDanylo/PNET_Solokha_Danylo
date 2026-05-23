@@ -2,7 +2,7 @@
 SELECT CONVERT(CHAR, GETDATE(), 101)
 GO
 
--- 1.3.2.1
+-- 1.3.2.1 +
 CREATE OR ALTER PROCEDURE usp_InsertSupplier
     @Name NVARCHAR(100),
     @Country NVARCHAR(50),
@@ -82,7 +82,7 @@ BEGIN
 END;
 GO
 
--- 1.3.3.1
+-- 1.3.3.1 +
 CREATE OR ALTER FUNCTION fn_CountExpensiveMedicines
 (
     @Country NVARCHAR(50)
@@ -111,7 +111,7 @@ BEGIN
 END;
 GO
 
--- 1.3.3.2
+-- 1.3.3.2 +
 CREATE OR ALTER FUNCTION fn_GetSupplierStockValue()
 RETURNS TABLE
 AS
@@ -127,7 +127,7 @@ RETURN
 );
 GO
 
--- 1.3.4
+-- 1.3.4 +
 CREATE OR ALTER TRIGGER tr_LogPriceChanges
 ON Medicines
 AFTER UPDATE
@@ -184,7 +184,7 @@ BEGIN
 END;
 GO
 
--- 1.3.5 Завдання 10
+-- 1.3.5 Завдання 10 +
 CREATE OR ALTER PROCEDURE usp_ArchiveSmallSalesByCategory
     @CategoryId INT,
     @k INT
@@ -265,7 +265,7 @@ BEGIN
 END;
 GO
 
--- 1.3.5 Завдання 18
+-- 1.3.5 Завдання 18 +
 CREATE OR ALTER TRIGGER tr_UpdateAuditOnDelivery
 ON Inventory
 AFTER INSERT
