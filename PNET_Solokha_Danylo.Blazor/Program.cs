@@ -6,11 +6,13 @@ using PNET_Solokha_Danylo.Application;
 using PNET_Solokha_Danylo.Infrastructure.Data;
 using Serilog;
 using Serilog.Events;
+using Serilog.Sinks.Grafana.Loki;
+using OpenTelemetry.Metrics;
 
 var builder = WebApplication.CreateBuilder(args);
 
 // Configure Serilog
-var seqUrl = builder.Configuration["SEQ_URL"] ?? "http://localhost:5341";
+var lokiUrl = builder.Configuration["LOKI_URL"] ?? "http://localhost:3100";
 
 Log.Logger = new LoggerConfiguration()
     .MinimumLevel.Information()
@@ -18,11 +20,21 @@ Log.Logger = new LoggerConfiguration()
     .MinimumLevel.Override("Microsoft.AspNetCore", LogEventLevel.Warning)
     .Enrich.FromLogContext()
     .WriteTo.Console()
-    .WriteTo.Seq(seqUrl)
+    .WriteTo.GrafanaLoki(lokiUrl, labels: new[] { new LokiLabel { Key = "app", Value = "aspnetcore" } })
     .CreateLogger();
 
 builder.Logging.ClearProviders();
 builder.Host.UseSerilog();
+
+// Configure OpenTelemetry Metrics
+builder.Services.AddOpenTelemetry()
+    .WithMetrics(metrics =>
+    {
+        metrics.AddAspNetCoreInstrumentation()
+               .AddHttpClientInstrumentation()
+               .AddRuntimeInstrumentation()
+               .AddPrometheusExporter();
+    });
 
 // Add services to the container.
 builder.Services.AddRazorComponents()
@@ -75,7 +87,7 @@ app.UseHttpsRedirection();
 
 app.UseAntiforgery();
 
-app.MapMetrics();
+app.UseOpenTelemetryPrometheusScrapingEndpoint();
 
 app.MapStaticAssets();
 app.MapRazorComponents<App>()

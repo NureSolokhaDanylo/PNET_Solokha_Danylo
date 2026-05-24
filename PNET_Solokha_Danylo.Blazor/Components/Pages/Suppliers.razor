@@ -1,0 +1,87 @@
+@page "/suppliers"
+@inject IMediator Mediator
+
+<PageTitle>Suppliers</PageTitle>
+
+<h1>Suppliers</h1>
+
+<div class="row">
+    <div class="col-md-4">
+        <h3>Add New Supplier</h3>
+        <EditForm Model="command" OnValidSubmit="HandleValidSubmit" FormName="AddSupplierForm">
+            <FluentValidationValidator />
+            <div class="mb-3">
+                <label for="name" class="form-label">Name</label>
+                <InputText id="name" @bind-Value="command.Name" class="form-label form-control" />
+                <ValidationMessage For="@(() => command.Name)" />
+            </div>
+            <div class="mb-3">
+                <label for="country" class="form-label">Country</label>
+                <InputText id="country" @bind-Value="command.Country" class="form-label form-control" />
+                <ValidationMessage For="@(() => command.Country)" />
+            </div>
+            <div class="mb-3">
+                <label for="notes" class="form-label">Notes</label>
+                <InputTextArea id="notes" @bind-Value="command.Notes" class="form-label form-control" />
+                <ValidationMessage For="@(() => command.Notes)" />
+            </div>
+            <button type="submit" class="btn btn-primary">Add</button>
+        </EditForm>
+    </div>
+    
+    <div class="col-md-8">
+        <h3>Current Suppliers</h3>
+        @if (suppliers == null)
+        {
+            <p><em>Loading...</em></p>
+        }
+        else
+        {
+            <table class="table">
+                <thead>
+                    <tr>
+                        <th>ID</th>
+                        <th>Name</th>
+                        <th>Country</th>
+                        <th>Last Audit</th>
+                        <th>Notes</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    @foreach (var supplier in suppliers)
+                    {
+                        <tr>
+                            <td>@supplier.SupplierId</td>
+                            <td>@supplier.Name</td>
+                            <td>@supplier.Country</td>
+                            <td>@supplier.LastAuditDate.ToShortDateString()</td>
+                            <td>@supplier.Notes</td>
+                        </tr>
+                    }
+                </tbody>
+            </table>
+        }
+    </div>
+</div>
+
+@code {
+    private CreateSupplierCommand command = new();
+    private List<Supplier>? suppliers;
+
+    protected override async Task OnInitializedAsync()
+    {
+        await LoadSuppliers();
+    }
+
+    private async Task LoadSuppliers()
+    {
+        suppliers = await Mediator.Send(new GetSuppliersQuery());
+    }
+
+    private async Task HandleValidSubmit()
+    {
+        await Mediator.Send(command);
+        command = new();
+        await LoadSuppliers();
+    }
+}

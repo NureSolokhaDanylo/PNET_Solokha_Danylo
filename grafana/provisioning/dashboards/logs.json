@@ -1,0 +1,40 @@
+{
+  "title": "Container Logs",
+  "tags": ["logs", "docker"],
+  "schemaVersion": 36,
+  "version": 1,
+  "time": {
+    "from": "now-1h",
+    "to": "now"
+  },
+  "timepicker": {},
+  "panels": [
+    {
+      "id": 1,
+      "type": "logs",
+      "title": "All Containers",
+      "datasource": {
+        "type": "loki",
+        "uid": "lokids"
+      },
+      "gridPos": { "h": 20, "w": 24, "x": 0, "y": 0 },
+      "targets": [
+        {
+          "expr": "{container=~\"pnet_solokha_danylo_.+\"} | logfmt",
+          "refId": "A"
+        }
+      ],
+      "options": {
+        "showLabels": true,
+        "showTime": true,
+        "wrapLogMessage": true
+      },
+      "fieldConfig": {
+        "defaults": {
+          "custom": {}
+        },
+        "overrides": []
+      }
+    }
+  ]
+}

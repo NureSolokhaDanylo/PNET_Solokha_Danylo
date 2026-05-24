@@ -1,0 +1,78 @@
+@page "/categories"
+@inject IMediator Mediator
+
+<PageTitle>Categories</PageTitle>
+
+<h1>Categories</h1>
+
+<div class="row">
+    <div class="col-md-4">
+        <h3>Add New Category</h3>
+        <EditForm Model="command" OnValidSubmit="HandleValidSubmit" FormName="AddCategoryForm">
+            <FluentValidationValidator />
+            <div class="mb-3">
+                <label for="name" class="form-label">Name</label>
+                <InputText id="name" @bind-Value="command.Name" class="form-label form-control" />
+                <ValidationMessage For="@(() => command.Name)" />
+            </div>
+            <div class="mb-3">
+                <label for="description" class="form-label">Description</label>
+                <InputTextArea id="description" @bind-Value="command.Description" class="form-label form-control" />
+                <ValidationMessage For="@(() => command.Description)" />
+            </div>
+            <button type="submit" class="btn btn-primary">Add</button>
+        </EditForm>
+    </div>
+    
+    <div class="col-md-8">
+        <h3>Current Categories</h3>
+        @if (categories == null)
+        {
+            <p><em>Loading...</em></p>
+        }
+        else
+        {
+            <table class="table">
+                <thead>
+                    <tr>
+                        <th>ID</th>
+                        <th>Name</th>
+                        <th>Description</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    @foreach (var category in categories)
+                    {
+                        <tr>
+                            <td>@category.CategoryId</td>
+                            <td>@category.Name</td>
+                            <td>@category.Description</td>
+                        </tr>
+                    }
+                </tbody>
+            </table>
+        }
+    </div>
+</div>
+
+@code {
+    private CreateCategoryCommand command = new();
+    private List<Category>? categories;
+
+    protected override async Task OnInitializedAsync()
+    {
+        await LoadCategories();
+    }
+
+    private async Task LoadCategories()
+    {
+        categories = await Mediator.Send(new GetCategoriesQuery());
+    }
+
+    private async Task HandleValidSubmit()
+    {
+        await Mediator.Send(command);
+        command = new();
+        await LoadCategories();
+    }
+}

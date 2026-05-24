@@ -1,9 +1,10 @@
 using Microsoft.EntityFrameworkCore;
 using PNET_Solokha_Danylo.Domain.Entities;
+using PNET_Solokha_Danylo.Application.Common.Interfaces;
 
 namespace PNET_Solokha_Danylo.Infrastructure.Data;
 
-public class ApplicationDbContext(DbContextOptions<ApplicationDbContext> options) : DbContext(options)
+public class ApplicationDbContext(DbContextOptions<ApplicationDbContext> options) : DbContext(options), IApplicationDbContext
 {
     public DbSet<Category> Categories => Set<Category>();
     public DbSet<Supplier> Suppliers => Set<Supplier>();
