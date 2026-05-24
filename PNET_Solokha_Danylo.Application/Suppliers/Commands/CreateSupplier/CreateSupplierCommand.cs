@@ -2,6 +2,8 @@ using FluentValidation;
 using MediatR;
 using PNET_Solokha_Danylo.Application.Common.Interfaces;
 
+using Microsoft.Extensions.Logging;
+
 namespace PNET_Solokha_Danylo.Application.Suppliers.Commands.CreateSupplier;
 
 public record CreateSupplierCommand : IRequest<Unit>
@@ -25,12 +27,23 @@ public class CreateSupplierCommandValidator : AbstractValidator<CreateSupplierCo
     }
 }
 
-public class CreateSupplierCommandHandler(IApplicationDbContext context) : IRequestHandler<CreateSupplierCommand, Unit>
+public class CreateSupplierCommandHandler(IApplicationDbContext context, ILogger<CreateSupplierCommandHandler> logger) : IRequestHandler<CreateSupplierCommand, Unit>
 {
     public async Task<Unit> Handle(CreateSupplierCommand request, CancellationToken cancellationToken)
     {
-        // Using the stored procedure as requested
-        await context.InsertSupplierAsync(request.Name, request.Country, request.Notes);
+        logger.LogInformation("Handling CreateSupplierCommand for {Name} from {Country}", request.Name, request.Country);
+        
+        try
+        {
+            // Using the stored procedure as requested
+            await context.InsertSupplierAsync(request.Name, request.Country, request.Notes);
+            logger.LogInformation("Successfully inserted supplier {Name} via stored procedure", request.Name);
+        }
+        catch (Exception ex)
+        {
+            logger.LogError(ex, "Failed to insert supplier {Name} via stored procedure", request.Name);
+            throw;
+        }
         
         return Unit.Value;
     }

@@ -1,5 +1,7 @@
 @page "/suppliers"
+@rendermode InteractiveServer
 @inject IMediator Mediator
+@inject ILogger<Suppliers> Logger
 
 <PageTitle>Suppliers</PageTitle>
 
@@ -70,18 +72,36 @@
 
     protected override async Task OnInitializedAsync()
     {
+        Logger.LogInformation("Loading suppliers...");
         await LoadSuppliers();
     }
 
     private async Task LoadSuppliers()
     {
-        suppliers = await Mediator.Send(new GetSuppliersQuery());
+        try
+        {
+            suppliers = await Mediator.Send(new GetSuppliersQuery());
+            Logger.LogInformation("Loaded {Count} suppliers.", suppliers?.Count ?? 0);
+        }
+        catch (Exception ex)
+        {
+            Logger.LogError(ex, "Error loading suppliers.");
+        }
     }
 
     private async Task HandleValidSubmit()
     {
-        await Mediator.Send(command);
-        command = new();
-        await LoadSuppliers();
+        Logger.LogInformation("Submitting CreateSupplierCommand for {Name} from {Country}.", command.Name, command.Country);
+        try
+        {
+            await Mediator.Send(command);
+            Logger.LogInformation("Supplier {Name} created successfully.", command.Name);
+            command = new();
+            await LoadSuppliers();
+        }
+        catch (Exception ex)
+        {
+            Logger.LogError(ex, "Error creating supplier {Name}.", command.Name);
+        }
     }
 }

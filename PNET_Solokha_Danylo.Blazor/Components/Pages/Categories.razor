@@ -1,5 +1,7 @@
 @page "/categories"
+@rendermode InteractiveServer
 @inject IMediator Mediator
+@inject ILogger<Categories> Logger
 
 <PageTitle>Categories</PageTitle>
 
@@ -61,18 +63,36 @@
 
     protected override async Task OnInitializedAsync()
     {
+        Logger.LogInformation("Loading categories...");
         await LoadCategories();
     }
 
     private async Task LoadCategories()
     {
-        categories = await Mediator.Send(new GetCategoriesQuery());
+        try
+        {
+            categories = await Mediator.Send(new GetCategoriesQuery());
+            Logger.LogInformation("Loaded {Count} categories.", categories?.Count ?? 0);
+        }
+        catch (Exception ex)
+        {
+            Logger.LogError(ex, "Error loading categories.");
+        }
     }
 
     private async Task HandleValidSubmit()
     {
-        await Mediator.Send(command);
-        command = new();
-        await LoadCategories();
+        Logger.LogInformation("Submitting CreateCategoryCommand for {Name}.", command.Name);
+        try
+        {
+            await Mediator.Send(command);
+            Logger.LogInformation("Category {Name} created successfully.", command.Name);
+            command = new();
+            await LoadCategories();
+        }
+        catch (Exception ex)
+        {
+            Logger.LogError(ex, "Error creating category {Name}.", command.Name);
+        }
     }
 }

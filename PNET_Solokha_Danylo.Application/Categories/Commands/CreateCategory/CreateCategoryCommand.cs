@@ -3,6 +3,8 @@ using MediatR;
 using PNET_Solokha_Danylo.Domain.Entities;
 using PNET_Solokha_Danylo.Application.Common.Interfaces;
 
+using Microsoft.Extensions.Logging;
+
 namespace PNET_Solokha_Danylo.Application.Categories.Commands.CreateCategory;
 
 public record CreateCategoryCommand : IRequest<int>
@@ -24,16 +26,28 @@ public class CreateCategoryCommandValidator : AbstractValidator<CreateCategoryCo
     }
 }
 
-public class CreateCategoryCommandHandler(IApplicationDbContext context) : IRequestHandler<CreateCategoryCommand, int>
+public class CreateCategoryCommandHandler(IApplicationDbContext context, ILogger<CreateCategoryCommandHandler> logger) : IRequestHandler<CreateCategoryCommand, int>
 {
     public async Task<int> Handle(CreateCategoryCommand request, CancellationToken cancellationToken)
     {
-        var entity = new Category(request.Name, request.Description);
+        logger.LogInformation("Handling CreateCategoryCommand for {Name}", request.Name);
+        
+        try
+        {
+            var entity = new Category(request.Name, request.Description);
 
-        context.Categories.Add(entity);
+            context.Categories.Add(entity);
 
-        await context.SaveChangesAsync(cancellationToken);
+            await context.SaveChangesAsync(cancellationToken);
+            
+            logger.LogInformation("Successfully created category {Name} with ID {Id}", request.Name, entity.CategoryId);
 
-        return entity.CategoryId;
+            return entity.CategoryId;
+        }
+        catch (Exception ex)
+        {
+            logger.LogError(ex, "Failed to create category {Name}", request.Name);
+            throw;
+        }
     }
 }
