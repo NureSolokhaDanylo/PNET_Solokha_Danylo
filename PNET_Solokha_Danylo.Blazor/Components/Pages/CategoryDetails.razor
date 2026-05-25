@@ -1,0 +1,222 @@
+@page "/categories/{CategoryId:int}"
+@rendermode InteractiveServer
+@using PNET_Solokha_Danylo.Application.Categories.Queries.GetCategoryDetails
+@inject IMediator Mediator
+@inject NavigationManager NavigationManager
+@inject ILogger<CategoryDetails> Logger
+
+<PageTitle>Category Details - @(details?.Name ?? "Loading...")</PageTitle>
+
+<div class="container-fluid py-4">
+    <!-- Breadcrumb & Back Nav -->
+    <div class="mb-4 d-flex align-items-center justify-content-between">
+        <nav aria-label="breadcrumb">
+            <ol class="breadcrumb mb-0">
+                <li class="breadcrumb-item"><a href="categories" class="text-primary text-decoration-none">Categories</a></li>
+                <li class="breadcrumb-item active" aria-current="page">Details</li>
+            </ol>
+        </nav>
+        <a href="categories" class="btn btn-outline-secondary btn-sm rounded-3">
+            <i class="bi bi-arrow-left me-1"></i> Back to List
+        </a>
+    </div>
+
+    @if (isLoading)
+    {
+        <div class="d-flex flex-column align-items-center justify-content-center py-5">
+            <div class="spinner-border text-primary mb-3" role="status">
+                <span class="visually-hidden">Loading...</span>
+            </div>
+            <span class="text-secondary">Fetching category details...</span>
+        </div>
+    }
+    else if (details == null)
+    {
+        <div class="alert alert-danger rounded-4 p-4 shadow-sm" role="alert">
+            <div class="d-flex align-items-center">
+                <i class="bi bi-exclamation-triangle-fill fs-2 me-3 text-danger"></i>
+                <div>
+                    <h5 class="alert-heading fw-bold mb-1">Category Not Found</h5>
+                    <p class="mb-0">The requested category with ID #@CategoryId does not exist in the database.</p>
+                </div>
+            </div>
+        </div>
+    }
+    else
+    {
+        <!-- Header Section -->
+        <div class="card border-0 shadow-sm rounded-4 mb-4 overflow-hidden header-card">
+            <div class="card-body p-4 p-md-5 text-white">
+                <div class="row align-items-center">
+                    <div class="col-md-8">
+                        <span class="badge bg-white bg-opacity-25 text-white px-3 py-2 rounded-pill fs-7 mb-3 font-monospace">Category #@details.CategoryId</span>
+                        <h1 class="display-5 fw-bold mb-2 text-white">@details.Name</h1>
+                        <p class="lead mb-0 text-white-50">@(string.IsNullOrWhiteSpace(details.Description) ? "No description recorded for this category." : details.Description)</p>
+                    </div>
+                    <div class="col-md-4 text-md-end mt-4 mt-md-0">
+                        <i class="bi bi-tags display-1 text-white-50"></i>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Analytical Stats Cards Grid -->
+        <div class="row g-4 mb-4">
+            <!-- Stat 1: Total Medicines -->
+            <div class="col-sm-6 col-lg-3">
+                <div class="card border-0 shadow-sm rounded-4 stat-card bg-white p-3 h-100">
+                    <div class="d-flex align-items-center justify-content-between mb-3">
+                        <span class="text-secondary small fw-medium">Medicines Registered</span>
+                        <div class="icon-shape bg-primary-subtle text-primary rounded-3 px-2 py-1"><i class="bi bi-capsule fs-5"></i></div>
+                    </div>
+                    <h3 class="fw-bold mb-1 text-dark">@details.TotalMedicines</h3>
+                    <p class="text-muted extra-small mb-0">Different drugs in catalog</p>
+                </div>
+            </div>
+
+            <!-- Stat 2: Total Stock -->
+            <div class="col-sm-6 col-lg-3">
+                <div class="card border-0 shadow-sm rounded-4 stat-card bg-white p-3 h-100">
+                    <div class="d-flex align-items-center justify-content-between mb-3">
+                        <span class="text-secondary small fw-medium">Total Stock Quantity</span>
+                        <div class="icon-shape bg-info-subtle text-info rounded-3 px-2 py-1"><i class="bi bi-box-seam fs-5"></i></div>
+                    </div>
+                    <h3 class="fw-bold mb-1 text-dark">@details.TotalStock</h3>
+                    <p class="text-muted extra-small mb-0">Units physically on shelf</p>
+                </div>
+            </div>
+
+            <!-- Stat 3: Average Base Price -->
+            <div class="col-sm-6 col-lg-3">
+                <div class="card border-0 shadow-sm rounded-4 stat-card bg-white p-3 h-100">
+                    <div class="d-flex align-items-center justify-content-between mb-3">
+                        <span class="text-secondary small fw-medium">Average Base Price</span>
+                        <div class="icon-shape bg-success-subtle text-success rounded-3 px-2 py-1"><i class="bi bi-currency-dollar fs-5"></i></div>
+                    </div>
+                    <h3 class="fw-bold mb-1 text-dark">@details.AveragePrice.ToString("C")</h3>
+                    <p class="text-muted extra-small mb-0">Arithmetic average cost</p>
+                </div>
+            </div>
+
+            <!-- Stat 4: Inventory Valuation -->
+            <div class="col-sm-6 col-lg-3">
+                <div class="card border-0 shadow-sm rounded-4 stat-card bg-white p-3 h-100">
+                    <div class="d-flex align-items-center justify-content-between mb-3">
+                        <span class="text-secondary small fw-medium">Inventory Valuation</span>
+                        <div class="icon-shape bg-warning-subtle text-warning rounded-3 px-2 py-1"><i class="bi bi-cash-stack fs-5"></i></div>
+                    </div>
+                    <h3 class="fw-bold mb-1 text-dark">@details.TotalInventoryValue.ToString("C")</h3>
+                    <p class="text-muted extra-small mb-0">Total cost value of stock</p>
+                </div>
+            </div>
+        </div>
+
+        <!-- Associated Medicines Catalog Table -->
+        <div class="card border-0 shadow-sm rounded-4 overflow-hidden mb-4">
+            <div class="card-header bg-white border-0 pt-4 px-4 pb-2">
+                <h5 class="fw-bold mb-0 text-dark"><i class="bi bi-collection-play-fill text-primary me-2"></i>Medicines in this Category</h5>
+            </div>
+            <div class="card-body p-0">
+                @if (details.Medicines == null || !details.Medicines.Any())
+                {
+                    <div class="text-center py-5">
+                        <div class="mb-3 text-muted">
+                            <i class="bi bi-journal-x display-4"></i>
+                        </div>
+                        <h6 class="fw-semibold text-secondary">No medicines currently registered in this category.</h6>
+                    </div>
+                }
+                else
+                {
+                    <div class="table-responsive">
+                        <table class="table table-hover align-middle mb-0">
+                            <thead class="table-light">
+                                <tr>
+                                    <th class="ps-4">ID</th>
+                                    <th>Medicine Name</th>
+                                    <th class="text-end">Base Price</th>
+                                    <th class="text-end">Available Stock</th>
+                                    <th class="text-center" style="width: 150px;">Status</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                @foreach (var med in details.Medicines)
+                                {
+                                    <tr>
+                                        <td class="ps-4">
+                                            <span class="badge bg-secondary-subtle text-secondary-emphasis font-monospace px-2 py-1 fs-7">#@med.MedicineId</span>
+                                        </td>
+                                        <td>
+                                            <a href="/medicines/@med.MedicineId" class="fw-bold text-primary text-decoration-none">@med.Name</a>
+                                        </td>
+                                        <td class="text-end fw-semibold text-dark">
+                                            @med.BasePrice.ToString("C")
+                                        </td>
+                                        <td class="text-end font-monospace">
+                                            <span class="badge bg-light text-dark border px-2 py-1">@med.TotalStock</span>
+                                        </td>
+                                        <td class="text-center">
+                                            @if (med.IsActive)
+                                            {
+                                                <span class="badge bg-success px-2 py-1 rounded-pill">Active</span>
+                                            }
+                                            else
+                                            {
+                                                <span class="badge bg-danger px-2 py-1 rounded-pill">Inactive</span>
+                                            }
+                                        </td>
+                                    </tr>
+                                }
+                            </tbody>
+                        </table>
+                    </div>
+                }
+            </div>
+        </div>
+    }
+</div>
+
+<style>
+    .header-card {
+        background: linear-gradient(135deg, #1e3c72 0%, #2a5298 100%);
+    }
+    .fs-7 {
+        font-size: 0.8rem;
+    }
+    .extra-small {
+        font-size: 0.72rem;
+    }
+    .stat-card {
+        transition: transform 0.2s ease, box-shadow 0.2s ease;
+    }
+    .stat-card:hover {
+        transform: translateY(-3px);
+        box-shadow: 0 .5rem 1rem rgba(0,0,0,.08)!important;
+    }
+</style>
+
+@code {
+    [Parameter]
+    public int CategoryId { get; set; }
+
+    private CategoryDetailsDto? details;
+    private bool isLoading = true;
+
+    protected override async Task OnParametersSetAsync()
+    {
+        Logger.LogInformation("Loading details for CategoryId={CategoryId}", CategoryId);
+        isLoading = true;
+        try
+        {
+            details = await Mediator.Send(new GetCategoryDetailsQuery(CategoryId));
+        }
+        catch (Exception ex)
+        {
+            Logger.LogError(ex, "Error loading category details for CategoryId={CategoryId}", CategoryId);
+        }
+        finally
+        {
+            isLoading = false;
+        }
+    }
+}

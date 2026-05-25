@@ -1,0 +1,385 @@
+@page "/medicines/{MedicineId:int}"
+@rendermode InteractiveServer
+@using PNET_Solokha_Danylo.Application.Medicines.Queries.GetMedicineDetails
+@inject IMediator Mediator
+@inject NavigationManager NavigationManager
+@inject ILogger<MedicineDetails> Logger
+
+<PageTitle>Medicine Details - @(details?.Name ?? "Loading...")</PageTitle>
+
+<div class="container-fluid py-4">
+    <!-- Breadcrumb & Back Nav -->
+    <div class="mb-4 d-flex align-items-center justify-content-between">
+        <nav aria-label="breadcrumb">
+            <ol class="breadcrumb mb-0">
+                <li class="breadcrumb-item"><a href="medicines" class="text-primary text-decoration-none">Medicines</a></li>
+                <li class="breadcrumb-item active" aria-current="page">Details</li>
+            </ol>
+        </nav>
+        <a href="medicines" class="btn btn-outline-secondary btn-sm rounded-3">
+            <i class="bi bi-arrow-left me-1"></i> Back to List
+        </a>
+    </div>
+
+    @if (isLoading)
+    {
+        <div class="d-flex flex-column align-items-center justify-content-center py-5">
+            <div class="spinner-border text-primary mb-3" role="status">
+                <span class="visually-hidden">Loading...</span>
+            </div>
+            <span class="text-secondary">Fetching medicine details...</span>
+        </div>
+    }
+    else if (details == null)
+    {
+        <div class="alert alert-danger rounded-4 p-4 shadow-sm" role="alert">
+            <div class="d-flex align-items-center">
+                <i class="bi bi-exclamation-triangle-fill fs-2 me-3 text-danger"></i>
+                <div>
+                    <h5 class="alert-heading fw-bold mb-1">Medicine Not Found</h5>
+                    <p class="mb-0">The requested medicine with ID #@MedicineId does not exist in the database.</p>
+                </div>
+            </div>
+        </div>
+    }
+    else
+    {
+        <!-- Header Section -->
+        <div class="card border-0 shadow-sm rounded-4 mb-4 overflow-hidden header-card">
+            <div class="card-body p-4 p-md-5 text-white">
+                <div class="row align-items-center">
+                    <div class="col-md-8">
+                        <span class="badge bg-white bg-opacity-25 text-white px-3 py-2 rounded-pill fs-7 mb-3 font-monospace">Medicine #@details.MedicineId</span>
+                        <h1 class="display-5 fw-bold mb-2 text-white">@details.Name</h1>
+                        <div class="d-flex flex-wrap align-items-center gap-3 text-white-50 mt-3">
+                            <span><i class="bi bi-tag me-1"></i>Category: <a href="/categories/@details.CategoryId" class="text-warning fw-bold text-decoration-none hover-link">@details.CategoryName</a></span>
+                            <span class="vr bg-white bg-opacity-50 d-none d-sm-inline" style="height: 1.2rem;"></span>
+                            <span><i class="bi bi-building me-1"></i>Supplier: <a href="/suppliers/@details.SupplierId" class="text-warning fw-bold text-decoration-none hover-link">@details.SupplierName</a></span>
+                        </div>
+                    </div>
+                    <div class="col-md-4 text-md-end mt-4 mt-md-0">
+                        <i class="bi bi-capsule-capsule-cut display-1 text-white-50"></i>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Analytical Stats Cards Grid -->
+        <div class="row g-4 mb-4">
+            <!-- Stat 1: Base Price -->
+            <div class="col-sm-6 col-md-3">
+                <div class="card border-0 shadow-sm rounded-4 stat-card bg-white p-3 h-100">
+                    <div class="d-flex align-items-center justify-content-between mb-3">
+                        <span class="text-secondary small fw-medium">Base Catalog Price</span>
+                        <div class="icon-shape bg-primary-subtle text-primary rounded-3 px-2 py-1"><i class="bi bi-tags-fill fs-5"></i></div>
+                    </div>
+                    <h3 class="fw-bold mb-1 text-dark">@details.BasePrice.ToString("C")</h3>
+                    <p class="text-muted extra-small mb-0">Base standard price per unit</p>
+                </div>
+            </div>
+
+            <!-- Stat 2: Total Stock -->
+            <div class="col-sm-6 col-md-3">
+                <div class="card border-0 shadow-sm rounded-4 stat-card bg-white p-3 h-100">
+                    <div class="d-flex align-items-center justify-content-between mb-3">
+                        <span class="text-secondary small fw-medium">Current Stock</span>
+                        <div class="icon-shape bg-info-subtle text-info rounded-3 px-2 py-1"><i class="bi bi-box-seam fs-5"></i></div>
+                    </div>
+                    <h3 class="fw-bold mb-1 text-dark">@details.TotalStock</h3>
+                    <p class="text-muted extra-small mb-0">Across @details.ActiveBatchesCount active batches</p>
+                </div>
+            </div>
+
+            <!-- Stat 3: Total Revenue -->
+            <div class="col-sm-6 col-md-3">
+                <div class="card border-0 shadow-sm rounded-4 stat-card bg-white p-3 h-100">
+                    <div class="d-flex align-items-center justify-content-between mb-3">
+                        <span class="text-secondary small fw-medium">Total Sales Revenue</span>
+                        <div class="icon-shape bg-success-subtle text-success rounded-3 px-2 py-1"><i class="bi bi-cash-stack fs-5"></i></div>
+                    </div>
+                    <h3 class="fw-bold mb-1 text-dark">@details.TotalRevenue.ToString("C")</h3>
+                    <p class="text-muted extra-small mb-0">From @details.TotalUnitsSold units sold</p>
+                </div>
+            </div>
+
+            <!-- Stat 4: Catalog Status -->
+            <div class="col-sm-6 col-md-3">
+                <div class="card border-0 shadow-sm rounded-4 stat-card bg-white p-3 h-100">
+                    <div class="d-flex align-items-center justify-content-between mb-3">
+                        <span class="text-secondary small fw-medium">Catalog Status</span>
+                        <div class="icon-shape bg-warning-subtle text-warning rounded-3 px-2 py-1"><i class="bi bi-toggle-on fs-5"></i></div>
+                    </div>
+                    <div>
+                        @if (details.IsActive)
+                        {
+                            <h3 class="fw-bold text-success mb-1">Active</h3>
+                            <span class="badge bg-success-subtle text-success border border-success-subtle rounded-pill extra-small">Available for Orders</span>
+                        }
+                        else
+                        {
+                            <h3 class="fw-bold text-danger mb-1">Inactive</h3>
+                            <span class="badge bg-danger-subtle text-danger border border-danger-subtle rounded-pill extra-small">Discontinued</span>
+                        }
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Detail Tabs Section -->
+        <div class="card border-0 shadow-sm rounded-4 overflow-hidden mb-4">
+            <div class="card-header bg-white border-0 pt-4 px-4">
+                <ul class="nav nav-pills gap-2 border-bottom pb-3" id="detailsTab" role="tablist">
+                    <li class="nav-item" role="presentation">
+                        <button class="nav-link @(activeTab == "batches" ? "active" : "") rounded-3 fw-bold" @onclick='() => SetActiveTab("batches")'><i class="bi bi-box-seam me-2"></i>Inventory Batches</button>
+                    </li>
+                    <li class="nav-item" role="presentation">
+                        <button class="nav-link @(activeTab == "sales" ? "active" : "") rounded-3 fw-bold" @onclick='() => SetActiveTab("sales")'><i class="bi bi-cart-check me-2"></i>Sales History</button>
+                    </li>
+                    <li class="nav-item" role="presentation">
+                        <button class="nav-link @(activeTab == "price-history" ? "active" : "") rounded-3 fw-bold" @onclick='() => SetActiveTab("price-history")'><i class="bi bi-graph-up me-2"></i>Price Audits</button>
+                    </li>
+                </ul>
+            </div>
+            
+            <div class="card-body p-4">
+                <div class="tab-content" id="detailsTabContent">
+                    <!-- Tab 1: Inventory Batches -->
+                    @if (activeTab == "batches")
+                    {
+                        <div class="tab-pane fade show active" id="batches" role="tabpanel">
+                            <h5 class="fw-bold mb-3">Active Batches in Warehouse</h5>
+                            @if (details.Inventories == null || !details.Inventories.Any())
+                            {
+                                <div class="text-center py-5 text-muted">
+                                    <i class="bi bi-box-seam display-4 d-block mb-3"></i>
+                                    <h6>No batches registered for this medicine.</h6>
+                                </div>
+                            }
+                            else
+                            {
+                                <div class="table-responsive">
+                                    <table class="table table-hover align-middle mb-0">
+                                        <thead class="table-light">
+                                            <tr>
+                                                <th>Batch ID</th>
+                                                <th>Batch Number</th>
+                                                <th class="text-center">Quantity</th>
+                                                <th>Expiry Date</th>
+                                                <th>Location</th>
+                                                <th class="text-center">Status</th>
+                                            </tr>
+                                        </thead>
+                                        <tbody>
+                                            @foreach (var inv in details.Inventories)
+                                            {
+                                                var days = (inv.ExpiryDate - DateTime.Today).TotalDays;
+                                                <tr>
+                                                    <td>
+                                                        <a href="/inventory/@inv.InventoryId" class="badge bg-secondary-subtle text-secondary-emphasis font-monospace px-2 py-1 fs-7 text-decoration-none">#@inv.InventoryId</a>
+                                                    </td>
+                                                    <td>
+                                                        <span class="font-monospace fw-semibold text-dark">@inv.BatchNumber</span>
+                                                    </td>
+                                                    <td class="text-center">
+                                                        <span class="fw-bold text-primary">@inv.Quantity</span>
+                                                    </td>
+                                                    <td>
+                                                        <div class="d-flex flex-column">
+                                                            <span class="small text-dark">@inv.ExpiryDate.ToString("yyyy-MM-dd")</span>
+                                                            <span class="text-muted extra-small">Remaining: @((int)days) days</span>
+                                                        </div>
+                                                    </td>
+                                                    <td>
+                                                        <span class="text-secondary small"><i class="bi bi-geo-alt me-1"></i>@(inv.Location ?? "Main Shelf")</span>
+                                                    </td>
+                                                    <td class="text-center">
+                                                        @if (days < 0)
+                                                        {
+                                                            <span class="badge bg-danger px-2 py-1 rounded-pill">Expired</span>
+                                                        }
+                                                        else if (days <= 30)
+                                                        {
+                                                            <span class="badge bg-warning px-2 py-1 rounded-pill text-dark">Expiring Soon</span>
+                                                        }
+                                                        else
+                                                        {
+                                                            <span class="badge bg-success px-2 py-1 rounded-pill">Fresh</span>
+                                                        }
+                                                    </td>
+                                                </tr>
+                                            }
+                                        </tbody>
+                                    </table>
+                                </div>
+                            }
+                        </div>
+                    }
+
+                    <!-- Tab 2: Sales History -->
+                    @if (activeTab == "sales")
+                    {
+                        <div class="tab-pane fade show active" id="sales" role="tabpanel">
+                            <h5 class="fw-bold mb-3">Recent Sales Transactions</h5>
+                            @if (details.Sales == null || !details.Sales.Any())
+                            {
+                                <div class="text-center py-5 text-muted">
+                                    <i class="bi bi-cart-x display-4 d-block mb-3"></i>
+                                    <h6>No sales records found for this medicine.</h6>
+                                </div>
+                            }
+                            else
+                            {
+                                <div class="table-responsive">
+                                    <table class="table table-hover align-middle mb-0">
+                                        <thead class="table-light">
+                                            <tr>
+                                                <th>Sale ID</th>
+                                                <th class="text-center">Quantity</th>
+                                                <th>Sold Price</th>
+                                                <th>Discount</th>
+                                                <th>Total Revenue</th>
+                                                <th>Date</th>
+                                            </tr>
+                                        </thead>
+                                        <tbody>
+                                            @foreach (var sale in details.Sales)
+                                            {
+                                                <tr>
+                                                    <td>
+                                                        <a href="/sales/@sale.SaleId" class="badge bg-secondary-subtle text-secondary-emphasis font-monospace px-2 py-1 fs-7 text-decoration-none">#@sale.SaleId</a>
+                                                    </td>
+                                                    <td class="text-center font-monospace fw-semibold text-dark">
+                                                        @sale.Quantity
+                                                    </td>
+                                                    <td>
+                                                        <span class="text-secondary small">@sale.SoldPrice.ToString("C")</span>
+                                                    </td>
+                                                    <td>
+                                                        @if (sale.Discount > 0)
+                                                        {
+                                                            <span class="text-danger small"><i class="bi bi-tag-fill me-1"></i>-@sale.Discount.ToString("C")</span>
+                                                        }
+                                                        else
+                                                        {
+                                                            <span class="text-muted small">None</span>
+                                                        }
+                                                    </td>
+                                                    <td class="fw-bold text-success">
+                                                        @sale.TotalPrice.ToString("C")
+                                                    </td>
+                                                    <td class="text-secondary small">
+                                                        @sale.SaleDate.ToString("g")
+                                                    </td>
+                                                </tr>
+                                            }
+                                        </tbody>
+                                    </table>
+                                </div>
+                            }
+                        </div>
+                    }
+
+                    <!-- Tab 3: Price Change Logs -->
+                    @if (activeTab == "price-history")
+                    {
+                        <div class="tab-pane fade show active" id="price-history" role="tabpanel">
+                            <h5 class="fw-bold mb-3">Price Audit History</h5>
+                            @if (details.PriceChanges == null || !details.PriceChanges.Any())
+                            {
+                                <div class="text-center py-5 text-muted">
+                                    <i class="bi bi-clock-history display-4 d-block mb-3"></i>
+                                    <h6>No price change audits logged for this medicine.</h6>
+                                </div>
+                            }
+                            else
+                            {
+                                <div class="timeline-container p-3 bg-light rounded-4 border">
+                                    @foreach (var log in details.PriceChanges)
+                                    {
+                                        <div class="timeline-item d-flex gap-3 mb-4 pb-3 border-bottom border-light-subtle last-no-border">
+                                            <div class="timeline-badge bg-primary text-white rounded-circle p-2 d-flex align-items-center justify-content-center" style="width: 38px; height: 38px;">
+                                                <i class="bi bi-tag-fill"></i>
+                                            </div>
+                                            <div class="timeline-content flex-grow-1">
+                                                <div class="d-flex align-items-center justify-content-between mb-1">
+                                                    <a href="/system-audit/@log.LogId" class="fw-bold text-dark text-decoration-none hover-link">Price Update #@log.LogId</a>
+                                                    <span class="text-muted extra-small">@log.LogDate.ToString("f")</span>
+                                                </div>
+                                                <div class="small text-secondary mb-1">
+                                                    Changed from <span class="badge bg-danger-subtle text-danger px-2 py-1">@log.OldValue</span> to <span class="badge bg-success-subtle text-success px-2 py-1">@log.NewValue</span>
+                                                </div>
+                                                <div class="extra-small text-muted">
+                                                    <i class="bi bi-person me-1"></i>Authorized by: <strong>@(log.UserName ?? "System Trigger")</strong>
+                                                </div>
+                                            </div>
+                                        </div>
+                                    }
+                                </div>
+                            }
+                        </div>
+                    }
+                </div>
+            </div>
+        </div>
+    }
+</div>
+
+<style>
+    .header-card {
+        background: linear-gradient(135deg, #0f2027 0%, #203a43 50%, #2c5364 100%);
+    }
+    .hover-link:hover {
+        color: #fff !important;
+        text-decoration: underline !important;
+    }
+    .fs-7 {
+        font-size: 0.8rem;
+    }
+    .extra-small {
+        font-size: 0.72rem;
+    }
+    .stat-card {
+        transition: transform 0.2s ease, box-shadow 0.2s ease;
+    }
+    .stat-card:hover {
+        transform: translateY(-3px);
+        box-shadow: 0 .5rem 1rem rgba(0,0,0,.08)!important;
+    }
+    .last-no-border:last-child {
+        border-bottom: 0 !important;
+        margin-bottom: 0 !important;
+        pb-0 !important;
+    }
+</style>
+
+@code {
+    [Parameter]
+    public int MedicineId { get; set; }
+
+    private MedicineDetailsDto? details;
+    private bool isLoading = true;
+    private string activeTab = "batches";
+
+    protected override async Task OnParametersSetAsync()
+    {
+        Logger.LogInformation("Loading details for MedicineId={MedicineId}", MedicineId);
+        isLoading = true;
+        try
+        {
+            details = await Mediator.Send(new GetMedicineDetailsQuery(MedicineId));
+        }
+        catch (Exception ex)
+        {
+            Logger.LogError(ex, "Error loading medicine details for MedicineId={MedicineId}", MedicineId);
+        }
+        finally
+        {
+            isLoading = false;
+        }
+    }
+
+    private void SetActiveTab(string tab)
+    {
+        activeTab = tab;
+    }
+}

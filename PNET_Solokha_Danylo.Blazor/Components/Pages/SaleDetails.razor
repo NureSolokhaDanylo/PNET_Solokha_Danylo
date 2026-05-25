@@ -1,0 +1,249 @@
+@page "/sales/{SaleId:int}"
+@rendermode InteractiveServer
+@using PNET_Solokha_Danylo.Application.Sales.Queries.GetSaleDetails
+@inject IMediator Mediator
+@inject NavigationManager NavigationManager
+@inject ILogger<SaleDetails> Logger
+
+<PageTitle>Transaction Receipt - #@SaleId</PageTitle>
+
+<div class="container-fluid py-4">
+    <!-- Breadcrumb & Back Nav -->
+    <div class="mb-4 d-flex align-items-center justify-content-between">
+        <nav aria-label="breadcrumb">
+            <ol class="breadcrumb mb-0">
+                <li class="breadcrumb-item"><a href="sales" class="text-primary text-decoration-none">Sales</a></li>
+                <li class="breadcrumb-item active" aria-current="page">Details</li>
+            </ol>
+        </nav>
+        <a href="sales" class="btn btn-outline-secondary btn-sm rounded-3">
+            <i class="bi bi-arrow-left me-1"></i> Back to List
+        </a>
+    </div>
+
+    @if (isLoading)
+    {
+        <div class="d-flex flex-column align-items-center justify-content-center py-5">
+            <div class="spinner-border text-primary mb-3" role="status">
+                <span class="visually-hidden">Loading...</span>
+            </div>
+            <span class="text-secondary">Fetching sale transaction details...</span>
+        </div>
+    }
+    else if (details == null)
+    {
+        <div class="alert alert-danger rounded-4 p-4 shadow-sm" role="alert">
+            <div class="d-flex align-items-center">
+                <i class="bi bi-exclamation-triangle-fill fs-2 me-3 text-danger"></i>
+                <div>
+                    <h5 class="alert-heading fw-bold mb-1">Transaction Not Found</h5>
+                    <p class="mb-0">The requested sale transaction with ID #@SaleId does not exist in the database.</p>
+                </div>
+            </div>
+        </div>
+    }
+    else
+    {
+        <!-- Receipt Invoice Header -->
+        <div class="card border-0 shadow-sm rounded-4 mb-4 overflow-hidden header-card">
+            <div class="card-body p-4 p-md-5 text-white">
+                <div class="row align-items-center">
+                    <div class="col-md-8">
+                        <span class="badge bg-white bg-opacity-25 text-white px-3 py-2 rounded-pill fs-7 mb-3 font-monospace">Transaction Receipt</span>
+                        <h1 class="display-5 fw-bold mb-2 text-white">Sale ID: #@details.SaleId</h1>
+                        <p class="lead mb-0 text-white-50"><i class="bi bi-calendar-event me-2"></i>Date: <strong>@details.SaleDate.ToString("f")</strong></p>
+                    </div>
+                    <div class="col-md-4 text-md-end mt-4 mt-md-0">
+                        <i class="bi bi-receipt display-1 text-white-50"></i>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Analytical Stats Cards Grid -->
+        <div class="row g-4 mb-4">
+            <!-- Stat 1: Quantity -->
+            <div class="col-sm-6 col-md-3">
+                <div class="card border-0 shadow-sm rounded-4 stat-card bg-white p-3 h-100">
+                    <div class="d-flex align-items-center justify-content-between mb-3">
+                        <span class="text-secondary small fw-medium">Quantity Sold</span>
+                        <div class="icon-shape bg-primary-subtle text-primary rounded-3 px-2 py-1"><i class="bi bi-calculator fs-5"></i></div>
+                    </div>
+                    <h3 class="fw-bold mb-1 text-dark font-monospace">@details.Quantity</h3>
+                    <p class="text-muted extra-small mb-0">Total units purchased</p>
+                </div>
+            </div>
+
+            <!-- Stat 2: Sold Price per Unit -->
+            <div class="col-sm-6 col-md-3">
+                <div class="card border-0 shadow-sm rounded-4 stat-card bg-white p-3 h-100">
+                    <div class="d-flex align-items-center justify-content-between mb-3">
+                        <span class="text-secondary small fw-medium">Sold Price per Unit</span>
+                        <div class="icon-shape bg-info-subtle text-info rounded-3 px-2 py-1"><i class="bi bi-currency-dollar fs-5"></i></div>
+                    </div>
+                    <h3 class="fw-bold mb-1 text-dark font-monospace">@details.SoldPrice.ToString("C")</h3>
+                    <p class="text-muted extra-small mb-0">Actual price at checkout</p>
+                </div>
+            </div>
+
+            <!-- Stat 3: Total Revenue -->
+            <div class="col-sm-6 col-md-3">
+                <div class="card border-0 shadow-sm rounded-4 stat-card bg-white p-3 h-100">
+                    <div class="d-flex align-items-center justify-content-between mb-3">
+                        <span class="text-secondary small fw-medium">Total Revenue</span>
+                        <div class="icon-shape bg-success-subtle text-success rounded-3 px-2 py-1"><i class="bi bi-cash-stack fs-5"></i></div>
+                    </div>
+                    <h3 class="fw-bold mb-1 text-success font-monospace">@details.TotalRevenue.ToString("C")</h3>
+                    <p class="text-muted extra-small mb-0">Quantity times checkout price</p>
+                </div>
+            </div>
+
+            <!-- Stat 4: Savings -->
+            <div class="col-sm-6 col-md-3">
+                <div class="card border-0 shadow-sm rounded-4 stat-card bg-white p-3 h-100">
+                    <div class="d-flex align-items-center justify-content-between mb-3">
+                        <span class="text-secondary small fw-medium">Customer Savings</span>
+                        <div class="icon-shape bg-danger-subtle text-danger rounded-3 px-2 py-1"><i class="bi bi-tag-fill fs-5"></i></div>
+                    </div>
+                    @if (details.Savings > 0)
+                    {
+                        <h3 class="fw-bold mb-1 text-danger font-monospace">@details.Savings.ToString("C")</h3>
+                        <p class="text-muted extra-small mb-0">Via -$@details.Discount.ToString("F2") per-unit discount</p>
+                    }
+                    else
+                    {
+                        <h3 class="fw-bold mb-1 text-secondary">None</h3>
+                        <p class="text-muted extra-small mb-0">Sold at full catalog price</p>
+                    }
+                </div>
+            </div>
+        </div>
+
+        <!-- Invoice Breakdown Table -->
+        <div class="card border-0 shadow-sm rounded-4 mb-4">
+            <div class="card-body p-4">
+                <h5 class="fw-bold mb-4 text-dark"><i class="bi bi-file-earmark-spreadsheet text-primary me-2"></i>Invoice Details Breakdown</h5>
+                
+                <div class="table-responsive">
+                    <table class="table align-middle">
+                        <thead class="table-light">
+                            <tr>
+                                <th>Item Description</th>
+                                <th class="text-end">Base Price</th>
+                                <th class="text-end">Discount Applied</th>
+                                <th class="text-end">Checkout Price</th>
+                                <th class="text-center">Quantity</th>
+                                <th class="text-end pe-3">Subtotal</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            <tr>
+                                <td>
+                                    <div class="d-flex flex-column">
+                                        <a href="/medicines/@details.MedicineId" class="fw-bold text-primary text-decoration-none fs-6">@details.MedicineName</a>
+                                        <span class="text-muted extra-small">ID: #@details.MedicineId</span>
+                                    </div>
+                                </td>
+                                <td class="text-end text-secondary font-monospace">
+                                    @details.MedicineBasePrice.ToString("C")
+                                </td>
+                                <td class="text-end text-danger font-monospace">
+                                    @if (details.Discount > 0)
+                                    {
+                                        <span>-@details.Discount.ToString("C")</span>
+                                    }
+                                    else
+                                    {
+                                        <span>—</span>
+                                    }
+                                </td>
+                                <td class="text-end text-dark fw-semibold font-monospace">
+                                    @details.SoldPrice.ToString("C")
+                                </td>
+                                <td class="text-center text-dark font-monospace fw-semibold">
+                                    @details.Quantity
+                                </td>
+                                <td class="text-end text-success fw-bold font-monospace pe-3">
+                                    @details.TotalRevenue.ToString("C")
+                                </td>
+                            </tr>
+                            <tr class="table-group-divider border-top border-2">
+                                <td colspan="4" class="border-0"></td>
+                                <td class="text-end fw-bold text-secondary ps-0 py-2 border-0">Subtotal:</td>
+                                <td class="text-end fw-bold text-dark font-monospace pe-3 py-2 border-0">@details.OriginalPriceValuation.ToString("C")</td>
+                            </tr>
+                            <tr>
+                                <td colspan="4" class="border-0"></td>
+                                <td class="text-end fw-bold text-danger ps-0 py-2 border-0">Discount:</td>
+                                <td class="text-end fw-bold text-danger font-monospace pe-3 py-2 border-0">
+                                    @if (details.Savings > 0)
+                                    {
+                                        <span>-@details.Savings.ToString("C")</span>
+                                    }
+                                    else
+                                    {
+                                        <span>$0.00</span>
+                                    }
+                                </td>
+                            </tr>
+                            <tr class="border-top border-light-subtle">
+                                <td colspan="4" class="border-0"></td>
+                                <td class="text-end fw-bold text-dark ps-0 py-3 border-0 fs-5">Invoice Total:</td>
+                                <td class="text-end fw-bold text-success font-monospace pe-3 py-3 border-0 fs-5">@details.TotalRevenue.ToString("C")</td>
+                            </tr>
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+        </div>
+    }
+</div>
+
+<style>
+    .header-card {
+        background: linear-gradient(135deg, #00b4db 0%, #0083b0 100%);
+    }
+    .hover-link:hover {
+        color: #fff !important;
+        text-decoration: underline !important;
+    }
+    .fs-7 {
+        font-size: 0.8rem;
+    }
+    .extra-small {
+        font-size: 0.72rem;
+    }
+    .stat-card {
+        transition: transform 0.2s ease, box-shadow 0.2s ease;
+    }
+    .stat-card:hover {
+        transform: translateY(-3px);
+        box-shadow: 0 .5rem 1rem rgba(0,0,0,.08)!important;
+    }
+</style>
+
+@code {
+    [Parameter]
+    public int SaleId { get; set; }
+
+    private SaleDetailsDto? details;
+    private bool isLoading = true;
+
+    protected override async Task OnParametersSetAsync()
+    {
+        Logger.LogInformation("Loading details for SaleId={SaleId}", SaleId);
+        isLoading = true;
+        try
+        {
+            details = await Mediator.Send(new GetSaleDetailsQuery(SaleId));
+        }
+        catch (Exception ex)
+        {
+            Logger.LogError(ex, "Error loading sale details for SaleId={SaleId}", SaleId);
+        }
+        finally
+        {
+            isLoading = false;
+        }
+    }
+}

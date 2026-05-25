@@ -23,13 +23,14 @@
     [Parameter] public int? Value { get; set; }
     [Parameter] public EventCallback<int?> ValueChanged { get; set; }
     [Parameter] public EventCallback<Medicine?> OnMedicineSelected { get; set; }
+    [Parameter] public bool? IsActive { get; set; }
 
     private List<Medicine>? medicines;
     private Medicine? selectedMedicine;
 
     protected override async Task OnInitializedAsync()
     {
-        var result = await Mediator.Send(new GetMedicinesQuery());
+        var result = await Mediator.Send(new GetMedicinesQuery(IsActive: IsActive));
         medicines = result.Items;
         UpdateSelectedMedicine();
     }

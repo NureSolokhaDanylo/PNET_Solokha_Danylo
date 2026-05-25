@@ -48,7 +48,7 @@
 
                         <div class="mb-3">
                             <label class="form-label text-secondary small fw-medium">Select Medicine</label>
-                            <MedicineSelector @bind-Value="selectedMedicineId" OnMedicineSelected="HandleMedicineSelected" />
+                            <MedicineSelector @bind-Value="selectedMedicineId" OnMedicineSelected="HandleMedicineSelected" IsActive="true" />
                             <ValidationMessage For="@(() => command.MedicineId)" class="text-danger small mt-1" />
                             @if (selectedMedicineStock.HasValue)
                             {
@@ -270,10 +270,10 @@
                                     {
                                         <tr>
                                             <td class="ps-4">
-                                                <span class="badge bg-secondary-subtle text-secondary-emphasis font-monospace px-2 py-1 fs-7">#@s.SaleId</span>
+                                                <a href="/sales/@s.SaleId" class="badge bg-secondary-subtle text-secondary-emphasis font-monospace px-2 py-1 fs-7 text-decoration-none">#@s.SaleId</a>
                                             </td>
                                             <td>
-                                                <span class="fw-bold text-dark">@s.MedicineName</span>
+                                                <a href="/medicines/@s.MedicineId" class="fw-bold text-primary text-decoration-none">@s.MedicineName</a>
                                             </td>
                                             <td class="text-center">
                                                 <span class="badge bg-light text-dark font-monospace border px-2 py-1 fs-7">@s.Quantity</span>

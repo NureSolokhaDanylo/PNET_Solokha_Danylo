@@ -5,6 +5,7 @@
 @inject IMediator Mediator
 @inject ILogger<Medicines> Logger
 
+
 <PageTitle>Medicine Management</PageTitle>
 
 <div class="container-fluid py-4">
@@ -68,12 +69,6 @@
                             <label for="basePrice" class="form-label text-secondary small fw-medium">Base Price ($)</label>
                             <InputNumber id="basePrice" @bind-Value="command.BasePrice" class="form-control rounded-3" TValue="decimal" Step="0.01" />
                             <ValidationMessage For="@(() => command.BasePrice)" class="text-danger small mt-1" />
-                        </div>
-
-                        <div class="mb-3">
-                            <label class="form-label text-secondary small fw-medium">Initial Stock</label>
-                            <input type="text" class="form-control rounded-3 bg-light text-muted" value="0" disabled />
-                            <small class="text-muted extra-small">Initial stock is always 0. Add batches in Inventory to increase stock.</small>
                         </div>
 
                         <button type="submit" class="btn btn-primary w-100 rounded-3 py-2 mt-2">
@@ -144,7 +139,7 @@
             </div>
 
             <!-- List Table Card -->
-            <div class="card border-0 shadow-sm rounded-4 overflow-hidden">
+            <div id="medicines-table-card" class="card border-0 shadow-sm rounded-4 overflow-hidden">
                 <div class="card-body p-0">
                     @if (isLoading)
                     {
@@ -185,17 +180,31 @@
                                         <tr>
                                             <td class="ps-4">
                                                 <div class="d-flex flex-column">
-                                                    <span class="fw-bold text-dark">@medicine.Name</span>
+                                                    <a href="/medicines/@medicine.MedicineId" class="fw-bold text-primary text-decoration-none">@medicine.Name</a>
                                                     <span class="text-muted extra-small">ID: #@medicine.MedicineId</span>
                                                 </div>
                                             </td>
                                             <td>
-                                                <span class="badge bg-info-subtle text-info-emphasis px-2 py-1 fs-7">
-                                                    @(medicine.Category?.Name ?? "General")
-                                                </span>
+                                                @if (medicine.Category != null)
+                                                {
+                                                    <a href="/categories/@medicine.CategoryId" class="badge bg-info-subtle text-info-emphasis px-2 py-1 fs-7 text-decoration-none">
+                                                        @medicine.Category.Name
+                                                    </a>
+                                                }
+                                                else
+                                                {
+                                                    <span class="badge bg-info-subtle text-info-emphasis px-2 py-1 fs-7">General</span>
+                                                }
                                             </td>
                                             <td>
-                                                <span class="text-secondary small"><i class="bi bi-building me-1"></i>@(medicine.Supplier?.Name ?? "Unknown")</span>
+                                                @if (medicine.Supplier != null)
+                                                {
+                                                    <a href="/suppliers/@medicine.SupplierId" class="text-primary small text-decoration-none"><i class="bi bi-building me-1"></i>@medicine.Supplier.Name</a>
+                                                }
+                                                else
+                                                {
+                                                    <span class="text-secondary small"><i class="bi bi-building me-1"></i>Unknown</span>
+                                                }
                                             </td>
                                             <td class="text-end">
                                                 <span class="fw-semibold text-dark">@medicine.BasePrice.ToString("C")</span>
@@ -334,10 +343,13 @@
         await FetchData();
     }
 
-    private async Task FetchData()
+    private async Task FetchData(bool showSpinner = true)
     {
-        isLoading = true;
-        StateHasChanged();
+        if (showSpinner)
+        {
+            isLoading = true;
+            StateHasChanged();
+        }
 
         try
         {
@@ -426,7 +438,7 @@
         if (CanPrevPage)
         {
             skip = Math.Max(0, skip - take);
-            await FetchData();
+            await FetchData(showSpinner: false);
         }
     }
 
@@ -435,7 +447,7 @@
         if (CanNextPage)
         {
             skip += take;
-            await FetchData();
+            await FetchData(showSpinner: false);
         }
     }
 
@@ -445,7 +457,7 @@
         {
             take = newSize;
             skip = 0;
-            await FetchData();
+            await FetchData(showSpinner: false);
         }
     }
 }

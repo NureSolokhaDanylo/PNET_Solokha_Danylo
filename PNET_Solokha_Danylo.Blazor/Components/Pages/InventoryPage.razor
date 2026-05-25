@@ -168,10 +168,10 @@
                                         var daysRemaining = (inv.ExpiryDate - DateTime.Today).TotalDays;
                                         <tr>
                                             <td class="ps-4">
-                                                <span class="badge bg-secondary-subtle text-secondary-emphasis font-monospace px-2 py-1 fs-7">#@inv.InventoryId</span>
+                                                <a href="/inventory/@inv.InventoryId" class="badge bg-secondary-subtle text-secondary-emphasis font-monospace px-2 py-1 fs-7 text-decoration-none">#@inv.InventoryId</a>
                                             </td>
                                             <td>
-                                                <span class="fw-bold text-dark">@inv.MedicineName</span>
+                                                <a href="/medicines/@inv.MedicineId" class="fw-bold text-primary text-decoration-none">@inv.MedicineName</a>
                                             </td>
                                             <td>
                                                 <span class="badge bg-light text-dark font-monospace border px-2 py-1">@inv.BatchNumber</span>

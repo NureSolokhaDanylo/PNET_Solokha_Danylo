@@ -135,7 +135,7 @@
                                 var isExpanded = expandedRows.Contains(audit.LogId);
                                 <tr>
                                     <td class="ps-4">
-                                        <span class="badge bg-secondary-subtle text-secondary-emphasis font-monospace px-2 py-1 fs-7">#@audit.LogId</span>
+                                        <a href="/system-audit/@audit.LogId" class="badge bg-secondary-subtle text-secondary-emphasis font-monospace px-2 py-1 fs-7 text-decoration-none">#@audit.LogId</a>
                                     </td>
                                     <td>
                                         <span class="text-dark small fw-medium">@audit.LogDate.ToString("yyyy-MM-dd HH:mm:ss")</span>
@@ -176,7 +176,25 @@
                                         <span class="fw-semibold text-dark">@audit.TableName</span>
                                         @if (audit.RecordId.HasValue)
                                         {
-                                            <span class="text-muted small ms-1">(ID: @audit.RecordId)</span>
+                                            var recordLink = audit.TableName?.ToLower() switch
+                                            {
+                                                "categories" => $"/categories/{audit.RecordId}",
+                                                "suppliers" => $"/suppliers/{audit.RecordId}",
+                                                "medicines" => $"/medicines/{audit.RecordId}",
+                                                "inventory" => $"/inventory/{audit.RecordId}",
+                                                "sales" => $"/sales/{audit.RecordId}",
+                                                "salesarchive" => $"/sales-archive/{audit.RecordId}",
+                                                _ => null
+                                            };
+                                            
+                                            @if (recordLink != null)
+                                            {
+                                                <a href="@recordLink" class="text-primary small ms-1 font-monospace text-decoration-none">(ID: @audit.RecordId)</a>
+                                            }
+                                            else
+                                            {
+                                                <span class="text-muted small ms-1">(ID: @audit.RecordId)</span>
+                                            }
                                         }
                                     </td>
                                     <td>

@@ -1,0 +1,220 @@
+@page "/sales-archive/{ArchiveId:int}"
+@rendermode InteractiveServer
+@using PNET_Solokha_Danylo.Application.SalesArchives.Queries.GetSalesArchiveDetails
+@inject IMediator Mediator
+@inject NavigationManager NavigationManager
+@inject ILogger<SalesArchiveDetails> Logger
+
+<PageTitle>Archived Transaction - #@ArchiveId</PageTitle>
+
+<div class="container-fluid py-4">
+    <!-- Breadcrumb & Back Nav -->
+    <div class="mb-4 d-flex align-items-center justify-content-between">
+        <nav aria-label="breadcrumb">
+            <ol class="breadcrumb mb-0">
+                <li class="breadcrumb-item"><a href="sales-archive" class="text-primary text-decoration-none">Sales Archive</a></li>
+                <li class="breadcrumb-item active" aria-current="page">Details</li>
+            </ol>
+        </nav>
+        <a href="sales-archive" class="btn btn-outline-secondary btn-sm rounded-3">
+            <i class="bi bi-arrow-left me-1"></i> Back to List
+        </a>
+    </div>
+
+    @if (isLoading)
+    {
+        <div class="d-flex flex-column align-items-center justify-content-center py-5">
+            <div class="spinner-border text-primary mb-3" role="status">
+                <span class="visually-hidden">Loading...</span>
+            </div>
+            <span class="text-secondary">Fetching archived transaction details...</span>
+        </div>
+    }
+    else if (details == null)
+    {
+        <div class="alert alert-danger rounded-4 p-4 shadow-sm" role="alert">
+            <div class="d-flex align-items-center">
+                <i class="bi bi-exclamation-triangle-fill fs-2 me-3 text-danger"></i>
+                <div>
+                    <h5 class="alert-heading fw-bold mb-1">Archived Record Not Found</h5>
+                    <p class="mb-0">The requested archived transaction with ID #@ArchiveId does not exist in the database.</p>
+                </div>
+            </div>
+        </div>
+    }
+    else
+    {
+        <!-- Archive Header Section -->
+        <div class="card border-0 shadow-sm rounded-4 mb-4 overflow-hidden header-card">
+            <div class="card-body p-4 p-md-5 text-white">
+                <div class="row align-items-center">
+                    <div class="col-md-8">
+                        <span class="badge bg-warning bg-opacity-25 text-warning px-3 py-2 rounded-pill fs-7 mb-3 font-monospace border border-warning border-opacity-50"><i class="bi bi-archive-fill me-1"></i>Archived Record</span>
+                        <h1 class="display-5 fw-bold mb-2 text-white">Archive Folder #@details.ArchiveId</h1>
+                        <p class="lead mb-0 text-white-50"><i class="bi bi-calendar-x me-2"></i>Archived At: <strong>@details.ArchivedAt.ToString("f")</strong></p>
+                    </div>
+                    <div class="col-md-4 text-md-end mt-4 mt-md-0">
+                        <i class="bi bi-folder-symlink display-1 text-white-50"></i>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Analytical Stats Cards Grid -->
+        <div class="row g-4 mb-4">
+            <!-- Stat 1: Quantity -->
+            <div class="col-sm-6 col-md-3">
+                <div class="card border-0 shadow-sm rounded-4 stat-card bg-white p-3 h-100">
+                    <div class="d-flex align-items-center justify-content-between mb-3">
+                        <span class="text-secondary small fw-medium">Quantity Archived</span>
+                        <div class="icon-shape bg-primary-subtle text-primary rounded-3 px-2 py-1"><i class="bi bi-calculator fs-5"></i></div>
+                    </div>
+                    <h3 class="fw-bold mb-1 text-dark font-monospace">@details.Quantity</h3>
+                    <p class="text-muted extra-small mb-0">Total units in archived sale</p>
+                </div>
+            </div>
+
+            <!-- Stat 2: Archived Price per Unit -->
+            <div class="col-sm-6 col-md-3">
+                <div class="card border-0 shadow-sm rounded-4 stat-card bg-white p-3 h-100">
+                    <div class="d-flex align-items-center justify-content-between mb-3">
+                        <span class="text-secondary small fw-medium">Archived Unit Price</span>
+                        <div class="icon-shape bg-info-subtle text-info rounded-3 px-2 py-1"><i class="bi bi-currency-dollar fs-5"></i></div>
+                    </div>
+                    <h3 class="fw-bold mb-1 text-dark font-monospace">@details.SoldPrice.ToString("C")</h3>
+                    <p class="text-muted extra-small mb-0">Recorded price per unit</p>
+                </div>
+            </div>
+
+            <!-- Stat 3: Archived Value -->
+            <div class="col-sm-6 col-md-3">
+                <div class="card border-0 shadow-sm rounded-4 stat-card bg-white p-3 h-100">
+                    <div class="d-flex align-items-center justify-content-between mb-3">
+                        <span class="text-secondary small fw-medium">Archived Total Value</span>
+                        <div class="icon-shape bg-danger-subtle text-danger rounded-3 px-2 py-1"><i class="bi bi-cash-stack fs-5"></i></div>
+                    </div>
+                    <h3 class="fw-bold mb-1 text-danger font-monospace">@details.ArchivedRevenue.ToString("C")</h3>
+                    <p class="text-muted extra-small mb-0">Total financial value archived</p>
+                </div>
+            </div>
+
+            <!-- Stat 4: Archival Delay -->
+            <div class="col-sm-6 col-md-3">
+                <div class="card border-0 shadow-sm rounded-4 stat-card bg-white p-3 h-100">
+                    <div class="d-flex align-items-center justify-content-between mb-3">
+                        <span class="text-secondary small fw-medium">Archival Delay</span>
+                        <div class="icon-shape bg-warning-subtle text-warning rounded-3 px-2 py-1"><i class="bi bi-clock-history fs-5"></i></div>
+                    </div>
+                    @if (details.SaleDate.HasValue)
+                    {
+                        <h3 class="fw-bold mb-1 text-dark font-monospace">@((int)details.ArchivalDelayDays) days</h3>
+                        <p class="text-muted extra-small mb-0">Time between sale and archival</p>
+                    }
+                    else
+                    {
+                        <h3 class="fw-bold mb-1 text-secondary font-monospace">N/A</h3>
+                        <p class="text-muted extra-small mb-0">Original sale date missing</p>
+                    }
+                </div>
+            </div>
+        </div>
+
+        <!-- Archival Audit Folder & Context -->
+        <div class="card border-0 shadow-sm rounded-4 mb-4">
+            <div class="card-body p-4">
+                <h5 class="fw-bold mb-4 text-dark"><i class="bi bi-folder-fill text-warning me-2"></i>Archive Metadata Context</h5>
+                
+                <div class="row g-4 mb-4">
+                    <div class="col-sm-6 col-md-4">
+                        <div class="text-muted small">Original Sale ID</div>
+                        <div class="fw-bold text-dark fs-6 mt-1 font-monospace">
+                            @if (details.SaleId.HasValue)
+                            {
+                                <a href="/sales/@details.SaleId" class="text-primary text-decoration-none"><i class="bi bi-receipt me-1"></i>Sale #@details.SaleId</a>
+                            }
+                            else
+                            {
+                                <span class="text-secondary">—</span>
+                            }
+                        </div>
+                    </div>
+                    <div class="col-sm-6 col-md-4">
+                        <div class="text-muted small">Medicine Sold</div>
+                        <div class="fw-bold text-dark fs-6 mt-1">
+                            @if (details.MedicineId.HasValue)
+                            {
+                                <a href="/medicines/@details.MedicineId" class="text-primary text-decoration-none"><i class="bi bi-capsule me-1"></i>@details.MedicineName</a>
+                            }
+                            else
+                            {
+                                <span class="text-secondary">@details.MedicineName</span>
+                            }
+                        </div>
+                    </div>
+                    <div class="col-sm-6 col-md-4">
+                        <div class="text-muted small">Original Sale Date</div>
+                        <div class="fw-bold text-dark fs-6 mt-1">
+                            @(details.SaleDate?.ToString("f") ?? "—")
+                        </div>
+                    </div>
+                </div>
+
+                <div class="p-3 bg-light rounded-4 border-start border-4 border-warning">
+                    <div class="text-secondary small fw-bold mb-1"><i class="bi bi-chat-right-quote-fill text-warning me-2"></i>Reason for Archiving</div>
+                    <div class="font-monospace text-dark mt-1">
+                        @(string.IsNullOrWhiteSpace(details.Reason) ? "No reasoning was provided by the cursor processing operator." : details.Reason)
+                    </div>
+                </div>
+            </div>
+        </div>
+    }
+</div>
+
+<style>
+    .header-card {
+        background: linear-gradient(135deg, #3a6073 0%, #3a7bd5 100%);
+    }
+    .hover-link:hover {
+        color: #fff !important;
+        text-decoration: underline !important;
+    }
+    .fs-7 {
+        font-size: 0.8rem;
+    }
+    .extra-small {
+        font-size: 0.72rem;
+    }
+    .stat-card {
+        transition: transform 0.2s ease, box-shadow 0.2s ease;
+    }
+    .stat-card:hover {
+        transform: translateY(-3px);
+        box-shadow: 0 .5rem 1rem rgba(0,0,0,.08)!important;
+    }
+</style>
+
+@code {
+    [Parameter]
+    public int ArchiveId { get; set; }
+
+    private SalesArchiveDetailsDto? details;
+    private bool isLoading = true;
+
+    protected override async Task OnParametersSetAsync()
+    {
+        Logger.LogInformation("Loading details for SalesArchiveId={ArchiveId}", ArchiveId);
+        isLoading = true;
+        try
+        {
+            details = await Mediator.Send(new GetSalesArchiveDetailsQuery(ArchiveId));
+        }
+        catch (Exception ex)
+        {
+            Logger.LogError(ex, "Error loading sales archive details for SalesArchiveId={ArchiveId}", ArchiveId);
+        }
+        finally
+        {
+            isLoading = false;
+        }
+    }
+}

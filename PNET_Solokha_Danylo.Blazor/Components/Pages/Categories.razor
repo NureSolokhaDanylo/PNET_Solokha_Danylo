@@ -3,6 +3,7 @@
 @inject IMediator Mediator
 @inject ILogger<Categories> Logger
 
+
 <PageTitle>Category Management</PageTitle>
 
 <div class="container-fluid py-4">
@@ -102,7 +103,7 @@
             </div>
 
             <!-- List Table Card -->
-            <div class="card border-0 shadow-sm rounded-4 overflow-hidden">
+            <div id="categories-table-card" class="card border-0 shadow-sm rounded-4 overflow-hidden">
                 <div class="card-body p-0">
                     @if (isLoading)
                     {
@@ -142,7 +143,7 @@
                                                 <span class="badge bg-secondary-subtle text-secondary-emphasis font-monospace px-2 py-1 fs-7">#@category.CategoryId</span>
                                             </td>
                                             <td>
-                                                <span class="fw-bold text-dark">@category.Name</span>
+                                                <a href="/categories/@category.CategoryId" class="fw-bold text-primary text-decoration-none">@category.Name</a>
                                             </td>
                                             <td>
                                                 <span class="text-secondary small text-truncate d-inline-block" style="max-width: 400px;" title="@category.Description">
@@ -243,10 +244,13 @@
         await FetchData();
     }
 
-    private async Task FetchData()
+    private async Task FetchData(bool showSpinner = true)
     {
-        isLoading = true;
-        StateHasChanged();
+        if (showSpinner)
+        {
+            isLoading = true;
+            StateHasChanged();
+        }
 
         try
         {
@@ -329,7 +333,7 @@
         if (CanPrevPage)
         {
             skip = Math.Max(0, skip - take);
-            await FetchData();
+            await FetchData(showSpinner: false);
         }
     }
 
@@ -338,7 +342,7 @@
         if (CanNextPage)
         {
             skip += take;
-            await FetchData();
+            await FetchData(showSpinner: false);
         }
     }
 
@@ -348,7 +352,7 @@
         {
             take = newSize;
             skip = 0;
-            await FetchData();
+            await FetchData(showSpinner: false);
         }
     }
 }

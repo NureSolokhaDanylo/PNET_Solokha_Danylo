@@ -64,6 +64,12 @@ public class CreateSaleCommandHandler(
                 throw new ArgumentException("Selected medicine does not exist.");
             }
 
+            if (!medicine.IsActive)
+            {
+                logger.LogWarning("Medicine {MedicineName} (ID {MedicineId}) is inactive. Sales are not allowed.", medicine.Name, request.MedicineId);
+                throw new InvalidOperationException($"Cannot register sale for '{medicine.Name}' because it is inactive.");
+            }
+
             if (medicine.TotalStock < request.Quantity)
             {
                 logger.LogWarning("Not enough stock for medicine {MedicineName}. Available: {Available}, Requested: {Requested}",

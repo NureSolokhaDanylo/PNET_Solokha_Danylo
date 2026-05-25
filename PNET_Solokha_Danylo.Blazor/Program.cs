@@ -6,6 +6,12 @@ using Serilog;
 using Serilog.Events;
 using Serilog.Sinks.Grafana.Loki;
 using OpenTelemetry.Metrics;
+using System.Globalization;
+
+// Set default culture to uk-UA for Ukrainian date/time formatting and hryvnia currency symbol (₴)
+var cultureInfo = new CultureInfo("uk-UA");
+CultureInfo.DefaultThreadCurrentCulture = cultureInfo;
+CultureInfo.DefaultThreadCurrentUICulture = cultureInfo;
 
 var builder = WebApplication.CreateBuilder(args);
 

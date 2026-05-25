@@ -120,12 +120,12 @@
                                 var isExpanded = expandedRows.Contains(sa.ArchiveId);
                                 <tr>
                                     <td class="ps-4">
-                                        <span class="badge bg-secondary-subtle text-secondary-emphasis font-monospace px-2 py-1 fs-7">#@sa.ArchiveId</span>
+                                        <a href="/sales-archive/@sa.ArchiveId" class="badge bg-secondary-subtle text-secondary-emphasis font-monospace px-2 py-1 fs-7 text-decoration-none">#@sa.ArchiveId</a>
                                     </td>
                                     <td>
                                         @if (sa.SaleId.HasValue)
                                         {
-                                            <span class="text-dark font-monospace">@sa.SaleId</span>
+                                            <a href="/sales/@sa.SaleId" class="text-primary font-monospace text-decoration-none">@sa.SaleId</a>
                                         }
                                         else
                                         {
@@ -134,7 +134,14 @@
                                     </td>
                                     <td>
                                         <div class="d-flex flex-column">
-                                            <span class="fw-semibold text-dark">@sa.MedicineName</span>
+                                            @if (sa.MedicineId.HasValue)
+                                            {
+                                                <a href="/medicines/@sa.MedicineId" class="fw-semibold text-primary text-decoration-none">@sa.MedicineName</a>
+                                            }
+                                            else
+                                            {
+                                                <span class="fw-semibold text-dark">@sa.MedicineName</span>
+                                            }
                                             <span class="text-muted small">ID: @(sa.MedicineId?.ToString() ?? "N/A")</span>
                                         </div>
                                     </td>

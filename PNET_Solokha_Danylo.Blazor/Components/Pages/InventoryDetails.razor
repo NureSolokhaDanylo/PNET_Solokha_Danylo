@@ -1,0 +1,226 @@
+@page "/inventory/{InventoryId:int}"
+@rendermode InteractiveServer
+@using PNET_Solokha_Danylo.Application.Inventories.Queries.GetInventoryDetails
+@inject IMediator Mediator
+@inject NavigationManager NavigationManager
+@inject ILogger<InventoryDetails> Logger
+
+<PageTitle>Inventory Batch Details - #@InventoryId</PageTitle>
+
+<div class="container-fluid py-4">
+    <!-- Breadcrumb & Back Nav -->
+    <div class="mb-4 d-flex align-items-center justify-content-between">
+        <nav aria-label="breadcrumb">
+            <ol class="breadcrumb mb-0">
+                <li class="breadcrumb-item"><a href="inventory" class="text-primary text-decoration-none">Inventory</a></li>
+                <li class="breadcrumb-item active" aria-current="page">Details</li>
+            </ol>
+        </nav>
+        <a href="inventory" class="btn btn-outline-secondary btn-sm rounded-3">
+            <i class="bi bi-arrow-left me-1"></i> Back to List
+        </a>
+    </div>
+
+    @if (isLoading)
+    {
+        <div class="d-flex flex-column align-items-center justify-content-center py-5">
+            <div class="spinner-border text-primary mb-3" role="status">
+                <span class="visually-hidden">Loading...</span>
+            </div>
+            <span class="text-secondary">Fetching inventory batch details...</span>
+        </div>
+    }
+    else if (details == null)
+    {
+        <div class="alert alert-danger rounded-4 p-4 shadow-sm" role="alert">
+            <div class="d-flex align-items-center">
+                <i class="bi bi-exclamation-triangle-fill fs-2 me-3 text-danger"></i>
+                <div>
+                    <h5 class="alert-heading fw-bold mb-1">Batch Not Found</h5>
+                    <p class="mb-0">The requested inventory batch with ID #@InventoryId does not exist in the database.</p>
+                </div>
+            </div>
+        </div>
+    }
+    else
+    {
+        <!-- Header Section -->
+        <div class="card border-0 shadow-sm rounded-4 mb-4 overflow-hidden header-card">
+            <div class="card-body p-4 p-md-5 text-white">
+                <div class="row align-items-center">
+                    <div class="col-md-8">
+                        <span class="badge bg-white bg-opacity-25 text-white px-3 py-2 rounded-pill fs-7 mb-3 font-monospace">Batch #@details.InventoryId</span>
+                        <h1 class="display-5 fw-bold mb-2 text-white">Batch: @details.BatchNumber</h1>
+                        <p class="lead mb-0 text-white-50"><i class="bi bi-capsule me-2 text-warning"></i>Medicine: <a href="/medicines/@details.MedicineId" class="text-warning fw-bold text-decoration-none hover-link">@details.MedicineName</a></p>
+                    </div>
+                    <div class="col-md-4 text-md-end mt-4 mt-md-0">
+                        <i class="bi bi-box-seam display-1 text-white-50"></i>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Analytical Stats Cards Grid -->
+        <div class="row g-4 mb-4">
+            <!-- Stat 1: Quantity -->
+            <div class="col-sm-6 col-md-3">
+                <div class="card border-0 shadow-sm rounded-4 stat-card bg-white p-3 h-100">
+                    <div class="d-flex align-items-center justify-content-between mb-3">
+                        <span class="text-secondary small fw-medium">Batch Quantity</span>
+                        <div class="icon-shape bg-primary-subtle text-primary rounded-3 px-2 py-1"><i class="bi bi-box-seam fs-5"></i></div>
+                    </div>
+                    <h3 class="fw-bold mb-1 text-dark font-monospace">@details.Quantity</h3>
+                    <p class="text-muted extra-small mb-0">Total items remaining in stock</p>
+                </div>
+            </div>
+
+            <!-- Stat 2: Unit Price -->
+            <div class="col-sm-6 col-md-3">
+                <div class="card border-0 shadow-sm rounded-4 stat-card bg-white p-3 h-100">
+                    <div class="d-flex align-items-center justify-content-between mb-3">
+                        <span class="text-secondary small fw-medium">Medicine Unit Price</span>
+                        <div class="icon-shape bg-info-subtle text-info rounded-3 px-2 py-1"><i class="bi bi-currency-dollar fs-5"></i></div>
+                    </div>
+                    <h3 class="fw-bold mb-1 text-dark">@details.MedicineBasePrice.ToString("C")</h3>
+                    <p class="text-muted extra-small mb-0">Catalog price per unit</p>
+                </div>
+            </div>
+
+            <!-- Stat 3: Valuation -->
+            <div class="col-sm-6 col-md-3">
+                <div class="card border-0 shadow-sm rounded-4 stat-card bg-white p-3 h-100">
+                    <div class="d-flex align-items-center justify-content-between mb-3">
+                        <span class="text-secondary small fw-medium">Batch Cost Valuation</span>
+                        <div class="icon-shape bg-success-subtle text-success rounded-3 px-2 py-1"><i class="bi bi-cash-stack fs-5"></i></div>
+                    </div>
+                    <h3 class="fw-bold mb-1 text-dark">@details.Valuation.ToString("C")</h3>
+                    <p class="text-muted extra-small mb-0">Quantity multiplied by price</p>
+                </div>
+            </div>
+
+            <!-- Stat 4: Expiration Status -->
+            <div class="col-sm-6 col-md-3">
+                <div class="card border-0 shadow-sm rounded-4 stat-card bg-white p-3 h-100">
+                    <div class="d-flex align-items-center justify-content-between mb-3">
+                        <span class="text-secondary small fw-medium">Shelf Expiry Status</span>
+                        <div class="icon-shape bg-warning-subtle text-warning rounded-3 px-2 py-1"><i class="bi bi-hourglass-split fs-5"></i></div>
+                    </div>
+                    <div>
+                        @if (details.DaysRemaining < 0)
+                        {
+                            <h3 class="fw-bold text-danger mb-1">Expired</h3>
+                            <span class="badge bg-danger-subtle text-danger border border-danger-subtle rounded-pill extra-small">Remove from shelf</span>
+                        }
+                        else if (details.DaysRemaining <= 30)
+                        {
+                            <h3 class="fw-bold text-warning mb-1">Expiring</h3>
+                            <span class="badge bg-warning-subtle text-warning border border-warning-subtle rounded-pill extra-small">Priority Sale</span>
+                        }
+                        else
+                        {
+                            <h3 class="fw-bold text-success mb-1">Fresh</h3>
+                            <span class="badge bg-success-subtle text-success border border-success-subtle rounded-pill extra-small">In safe window</span>
+                        }
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Shelf Life Progress and Location Card -->
+        <div class="card border-0 shadow-sm rounded-4 mb-4">
+            <div class="card-body p-4">
+                <h5 class="fw-bold mb-4 text-dark"><i class="bi bi-shield-exclamation text-primary me-2"></i>Shelf Life & Location Details</h5>
+                
+                <div class="row g-4 mb-3">
+                    <div class="col-md-6">
+                        <div class="text-muted small mb-1">Storage Location</div>
+                        <div class="fw-bold text-dark fs-5"><i class="bi bi-geo-alt me-2 text-danger"></i>@(details.Location ?? "Main Shelf")</div>
+                    </div>
+                    <div class="col-md-6">
+                        <div class="text-muted small mb-1">Expiration Date</div>
+                        <div class="fw-bold text-dark fs-5"><i class="bi bi-calendar-check me-2 text-success"></i>@details.ExpiryDate.ToString("D")</div>
+                    </div>
+                </div>
+
+                <div class="mt-4">
+                    <div class="d-flex justify-content-between small text-muted mb-2">
+                        <span>Shelf Life Indicator</span>
+                        @if (details.DaysRemaining >= 0)
+                        {
+                            <span><strong>@((int)details.DaysRemaining)</strong> days remaining</span>
+                        }
+                        else
+                        {
+                            <span>Expired <strong>@((int)Math.Abs(details.DaysRemaining))</strong> days ago</span>
+                        }
+                    </div>
+                    
+                    <div class="progress rounded-pill" style="height: 12px;">
+                        @if (details.DaysRemaining < 0)
+                        {
+                            <div class="progress-bar bg-danger" role="progressbar" style="width: 100%" aria-valuenow="100" aria-valuemin="0" aria-valuemax="100"></div>
+                        }
+                        else if (details.DaysRemaining <= 30)
+                        {
+                            <div class="progress-bar bg-warning" role="progressbar" style="width: @(Math.Max(10, (details.DaysRemaining / 30) * 100))%" aria-valuenow="100" aria-valuemin="0" aria-valuemax="100"></div>
+                        }
+                        else
+                        {
+                            <div class="progress-bar bg-success" role="progressbar" style="width: @(Math.Min(100, (details.DaysRemaining / 180) * 100))%" aria-valuenow="100" aria-valuemin="0" aria-valuemax="100"></div>
+                        }
+                    </div>
+                    <small class="text-muted extra-small mt-2 d-block">Valuation indicator assumes full-capacity batch freshness and location tracking safety.</small>
+                </div>
+            </div>
+        </div>
+    }
+</div>
+
+<style>
+    .header-card {
+        background: linear-gradient(135deg, #1d2671 0%, #c33764 100%);
+    }
+    .hover-link:hover {
+        color: #fff !important;
+        text-decoration: underline !important;
+    }
+    .fs-7 {
+        font-size: 0.8rem;
+    }
+    .extra-small {
+        font-size: 0.72rem;
+    }
+    .stat-card {
+        transition: transform 0.2s ease, box-shadow 0.2s ease;
+    }
+    .stat-card:hover {
+        transform: translateY(-3px);
+        box-shadow: 0 .5rem 1rem rgba(0,0,0,.08)!important;
+    }
+</style>
+
+@code {
+    [Parameter]
+    public int InventoryId { get; set; }
+
+    private InventoryDetailsDto? details;
+    private bool isLoading = true;
+
+    protected override async Task OnParametersSetAsync()
+    {
+        Logger.LogInformation("Loading details for InventoryId={InventoryId}", InventoryId);
+        isLoading = true;
+        try
+        {
+            details = await Mediator.Send(new GetInventoryDetailsQuery(InventoryId));
+        }
+        catch (Exception ex)
+        {
+            Logger.LogError(ex, "Error loading inventory batch details for InventoryId={InventoryId}", InventoryId);
+        }
+        finally
+        {
+            isLoading = false;
+        }
+    }
+}
