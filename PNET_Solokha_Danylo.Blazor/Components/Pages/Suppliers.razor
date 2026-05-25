@@ -3,105 +3,382 @@
 @inject IMediator Mediator
 @inject ILogger<Suppliers> Logger
 
-<PageTitle>Suppliers</PageTitle>
+<PageTitle>Supplier Management</PageTitle>
 
-<h1>Suppliers</h1>
-
-<div class="row">
-    <div class="col-md-4">
-        <h3>Add New Supplier</h3>
-        <EditForm Model="command" OnValidSubmit="HandleValidSubmit" FormName="AddSupplierForm">
-            <FluentValidationValidator />
-            <div class="mb-3">
-                <label for="name" class="form-label">Name</label>
-                <InputText id="name" @bind-Value="command.Name" class="form-label form-control" />
-                <ValidationMessage For="@(() => command.Name)" />
-            </div>
-            <div class="mb-3">
-                <label for="country" class="form-label">Country</label>
-                <InputText id="country" @bind-Value="command.Country" class="form-label form-control" />
-                <ValidationMessage For="@(() => command.Country)" />
-            </div>
-            <div class="mb-3">
-                <label for="notes" class="form-label">Notes</label>
-                <InputTextArea id="notes" @bind-Value="command.Notes" class="form-label form-control" />
-                <ValidationMessage For="@(() => command.Notes)" />
-            </div>
-            <button type="submit" class="btn btn-primary">Add</button>
-        </EditForm>
+<div class="container-fluid py-4">
+    <!-- Header with Gradient Title -->
+    <div class="d-flex align-items-center justify-content-between mb-4">
+        <div>
+            <h1 class="display-6 fw-bold text-gradient">Warehouse Suppliers</h1>
+            <p class="text-muted mb-0">Manage partner laboratories, supply origins, and compliance audits.</p>
+        </div>
+        <div class="badge bg-primary px-3 py-2 fs-6 rounded-pill shadow-sm">
+            Total Suppliers: @totalCount
+        </div>
     </div>
-    
-    <div class="col-md-8">
-        <h3>Current Suppliers</h3>
-        @if (suppliers == null)
-        {
-            <p><em>Loading...</em></p>
-        }
-        else
-        {
-            <table class="table">
-                <thead>
-                    <tr>
-                        <th>ID</th>
-                        <th>Name</th>
-                        <th>Country</th>
-                        <th>Last Audit</th>
-                        <th>Notes</th>
-                    </tr>
-                </thead>
-                <tbody>
-                    @foreach (var supplier in suppliers)
+
+    <div class="row g-4">
+        <!-- Add Supplier Form (Left) -->
+        <div class="col-md-4">
+            <div class="card border-0 shadow-sm rounded-4">
+                <div class="card-header bg-white border-0 pt-4 px-4 pb-2">
+                    <h5 class="fw-bold mb-0 text-dark"><i class="bi bi-plus-circle text-primary me-2"></i>Add New Supplier</h5>
+                </div>
+                <div class="card-body px-4 pb-4">
+                    @if (showSuccessAlert)
                     {
-                        <tr>
-                            <td>@supplier.SupplierId</td>
-                            <td>@supplier.Name</td>
-                            <td>@supplier.Country</td>
-                            <td>@supplier.LastAuditDate.ToShortDateString()</td>
-                            <td>@supplier.Notes</td>
-                        </tr>
+                        <div class="alert alert-success alert-dismissible fade show rounded-3" role="alert">
+                            <i class="bi bi-check-circle-fill me-2"></i> Supplier created successfully!
+                            <button type="button" class="btn-close" @onclick="() => showSuccessAlert = false" aria-label="Close"></button>
+                        </div>
                     }
-                </tbody>
-            </table>
-        }
+
+                    @if (!string.IsNullOrEmpty(errorMessage))
+                    {
+                        <div class="alert alert-danger alert-dismissible fade show rounded-3" role="alert">
+                            <i class="bi bi-exclamation-triangle-fill me-2"></i> @errorMessage
+                            <button type="button" class="btn-close" @onclick="() => errorMessage = null" aria-label="Close"></button>
+                        </div>
+                    }
+
+                    <EditForm Model="command" OnValidSubmit="HandleValidSubmit" FormName="AddSupplierForm">
+                        <FluentValidationValidator />
+                        
+                        <div class="mb-3">
+                            <label for="name" class="form-label text-secondary small fw-medium">Company Name</label>
+                            <InputText id="name" @bind-Value="command.Name" class="form-control rounded-3" placeholder="e.g. Pfizer Labs" />
+                            <ValidationMessage For="@(() => command.Name)" class="text-danger small mt-1" />
+                        </div>
+
+                        <div class="mb-3">
+                            <label for="country" class="form-label text-secondary small fw-medium">Country of Origin</label>
+                            <InputText id="country" @bind-Value="command.Country" class="form-control rounded-3" placeholder="e.g. Germany" />
+                            <ValidationMessage For="@(() => command.Country)" class="text-danger small mt-1" />
+                        </div>
+
+                        <div class="mb-3">
+                            <label for="notes" class="form-label text-secondary small fw-medium">Partnership Notes</label>
+                            <InputTextArea id="notes" @bind-Value="command.Notes" class="form-control rounded-3" rows="3" placeholder="Contract details, supply schedules..." />
+                            <ValidationMessage For="@(() => command.Notes)" class="text-danger small mt-1" />
+                        </div>
+
+                        <button type="submit" class="btn btn-primary w-100 rounded-3 py-2 mt-2">
+                            <i class="bi bi-save me-1"></i> Register Supplier
+                        </button>
+                    </EditForm>
+                </div>
+            </div>
+        </div>
+        
+        <!-- Suppliers List (Right) -->
+        <div class="col-md-8">
+            <!-- Filter Bar Card -->
+            <div class="card border-0 shadow-sm mb-4 rounded-4 filter-card">
+                <div class="card-body p-4">
+                    <h5 class="fw-semibold mb-3 d-flex align-items-center">
+                        <i class="bi bi-funnel-fill text-primary me-2"></i> Filters & Search
+                    </h5>
+                    <div class="row g-3 align-items-end">
+                        <!-- Search Name or Notes -->
+                        <div class="col-md-5">
+                            <label class="form-label text-secondary small fw-medium">Search Name / Notes</label>
+                            <div class="input-group">
+                                <span class="input-group-text bg-white border-end-0"><i class="bi bi-search text-muted"></i></span>
+                                <input type="text" class="form-control border-start-0 ps-0" placeholder="e.g. Labs, Pfizer..." @bind="searchTerm" @bind:event="oninput" @onkeyup="OnSearchKeyUp" />
+                                @if (!string.IsNullOrEmpty(searchTerm))
+                                {
+                                    <button class="btn btn-outline-secondary" type="button" @onclick="ClearSearch">
+                                        <i class="bi bi-x-lg"></i>
+                                    </button>
+                                }
+                            </div>
+                        </div>
+
+                        <!-- Filter by Country -->
+                        <div class="col-md-4">
+                            <label class="form-label text-secondary small fw-medium">Filter by Country</label>
+                            <input type="text" class="form-control rounded-3" placeholder="e.g. USA, Germany..." @bind="filterCountry" @bind:event="oninput" @onkeyup="OnSearchKeyUp" />
+                        </div>
+
+                        <!-- Buttons -->
+                        <div class="col-md-3 d-flex gap-2">
+                            <button class="btn btn-light w-50 rounded-3 text-secondary" @onclick="ResetFilters" title="Reset filters">
+                                <i class="bi bi-arrow-counterclockwise"></i>
+                            </button>
+                            <button class="btn btn-primary w-50 rounded-3" @onclick="ApplyFilters">
+                                Search
+                            </button>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- List Table Card -->
+            <div class="card border-0 shadow-sm rounded-4 overflow-hidden">
+                <div class="card-body p-0">
+                    @if (isLoading)
+                    {
+                        <div class="d-flex flex-column align-items-center justify-content-center py-5">
+                            <div class="spinner-border text-primary mb-3" role="status">
+                                <span class="visually-hidden">Loading...</span>
+                            </div>
+                            <span class="text-secondary">Fetching suppliers...</span>
+                        </div>
+                    }
+                    else if (suppliers == null || !suppliers.Any())
+                    {
+                        <div class="text-center py-5">
+                            <div class="mb-3 text-muted">
+                                <i class="bi bi-truck display-3"></i>
+                            </div>
+                            <h5 class="fw-semibold text-dark">No suppliers found</h5>
+                            <p class="text-muted px-4">There are no suppliers registered matching your current filters.</p>
+                        </div>
+                    }
+                    else
+                    {
+                        <div class="table-responsive">
+                            <table class="table table-hover align-middle mb-0">
+                                <thead class="table-light">
+                                    <tr>
+                                        <th class="ps-4" style="width: 80px;">ID</th>
+                                        <th>Name</th>
+                                        <th>Country</th>
+                                        <th>Last Audit</th>
+                                        <th>Notes</th>
+                                    </tr>
+                                </thead>
+                                <tbody>
+                                    @foreach (var supplier in suppliers)
+                                    {
+                                        <tr>
+                                            <td class="ps-4">
+                                                <span class="badge bg-secondary-subtle text-secondary-emphasis font-monospace px-2 py-1 fs-7">#@supplier.SupplierId</span>
+                                            </td>
+                                            <td>
+                                                <span class="fw-bold text-dark">@supplier.Name</span>
+                                            </td>
+                                            <td>
+                                                <span class="badge bg-light text-dark border px-2 py-1"><i class="bi bi-globe me-1 text-primary"></i>@supplier.Country</span>
+                                            </td>
+                                            <td>
+                                                <div class="d-flex flex-column">
+                                                    <span class="text-dark small">@supplier.LastAuditDate.ToString("yyyy-MM-dd")</span>
+                                                    <span class="text-muted extra-small">Time: @supplier.LastAuditDate.ToString("HH:mm")</span>
+                                                </div>
+                                            </td>
+                                            <td>
+                                                <span class="text-secondary small text-truncate d-inline-block" style="max-width: 250px;" title="@supplier.Notes">
+                                                    @(supplier.Notes ?? "—")
+                                                </span>
+                                            </td>
+                                        </tr>
+                                    }
+                                </tbody>
+                            </table>
+                        </div>
+
+                        <!-- Footer Pagination -->
+                        <div class="d-flex flex-column flex-md-row align-items-center justify-content-between p-4 bg-light border-top gap-3">
+                            <div class="text-secondary small fw-medium">
+                                Showing <span class="text-dark">@(suppliers.Any() ? skip + 1 : 0)</span> to <span class="text-dark">@(Math.Min(skip + take, totalCount))</span> of <span class="text-dark">@totalCount</span> entries
+                            </div>
+                            
+                            <div class="d-flex align-items-center gap-3">
+                                <div class="d-flex align-items-center gap-2">
+                                    <span class="small text-muted text-nowrap">Page size:</span>
+                                    <select class="form-select form-select-sm rounded-3" style="width: auto;" value="@take" @onchange="OnPageSizeChanged">
+                                        <option value="5">5</option>
+                                        <option value="10">10</option>
+                                        <option value="25">25</option>
+                                        <option value="50">50</option>
+                                    </select>
+                                </div>
+
+                                <nav aria-label="Pagination navigation">
+                                    <ul class="pagination pagination-sm mb-0 rounded-3">
+                                        <li class="page-item @(CanPrevPage ? "" : "disabled")">
+                                            <button class="page-item page-link rounded-start-3" @onclick="PrevPage" aria-label="Previous">
+                                                <i class="bi bi-chevron-left"></i> Prev
+                                            </button>
+                                        </li>
+                                        <li class="page-item active">
+                                            <span class="page-link px-3">@(CurrentPage)</span>
+                                        </li>
+                                        <li class="page-item @(CanNextPage ? "" : "disabled")">
+                                            <button class="page-item page-link rounded-end-3" @onclick="NextPage" aria-label="Next">
+                                                Next <i class="bi bi-chevron-right"></i>
+                                            </button>
+                                        </li>
+                                    </ul>
+                                </nav>
+                            </div>
+                        </div>
+                    }
+                </div>
+            </div>
+        </div>
     </div>
 </div>
+
+<style>
+    .text-gradient {
+        background: linear-gradient(135deg, #1e3c72 0%, #2a5298 100%);
+        -webkit-background-clip: text;
+        -webkit-text-fill-color: transparent;
+    }
+    
+    .filter-card {
+        background: rgba(255, 255, 255, 0.8);
+        backdrop-filter: blur(10px);
+        border: 1px solid rgba(220, 224, 230, 0.6);
+    }
+
+    .fs-7 {
+        font-size: 0.8rem;
+    }
+
+    .extra-small {
+        font-size: 0.72rem;
+    }
+</style>
 
 @code {
     private CreateSupplierCommand command = new();
     private List<Supplier>? suppliers;
+    private int totalCount;
+    private bool isLoading = true;
+
+    // Filters state
+    private string? searchTerm;
+    private string? filterCountry;
+
+    // Success and error indicators
+    private bool showSuccessAlert = false;
+    private string? errorMessage;
+
+    // Pagination state
+    private int skip = 0;
+    private int take = 10;
+
+    private int CurrentPage => (skip / take) + 1;
+    private bool CanPrevPage => skip > 0;
+    private bool CanNextPage => (skip + take) < totalCount;
 
     protected override async Task OnInitializedAsync()
     {
-        Logger.LogInformation("Loading suppliers...");
-        await LoadSuppliers();
+        Logger.LogInformation("Initializing Suppliers page.");
+        await FetchData();
     }
 
-    private async Task LoadSuppliers()
+    private async Task FetchData()
     {
+        isLoading = true;
+        StateHasChanged();
+
         try
         {
-            suppliers = await Mediator.Send(new GetSuppliersQuery());
-            Logger.LogInformation("Loaded {Count} suppliers.", suppliers?.Count ?? 0);
+            var query = new GetSuppliersQuery(
+                SearchTerm: searchTerm,
+                Country: filterCountry,
+                Skip: skip,
+                Take: take
+            );
+
+            var result = await Mediator.Send(query);
+            suppliers = result.Items;
+            totalCount = result.TotalCount;
+
+            Logger.LogInformation("Fetched {Count} suppliers (Total {Total}) for page {Page}.",
+                suppliers?.Count ?? 0, totalCount, CurrentPage);
         }
         catch (Exception ex)
         {
-            Logger.LogError(ex, "Error loading suppliers.");
+            Logger.LogError(ex, "Error fetching suppliers.");
+            errorMessage = "Failed to load suppliers.";
+        }
+        finally
+        {
+            isLoading = false;
+            StateHasChanged();
         }
     }
 
     private async Task HandleValidSubmit()
     {
+        showSuccessAlert = false;
+        errorMessage = null;
         Logger.LogInformation("Submitting CreateSupplierCommand for {Name} from {Country}.", command.Name, command.Country);
+
         try
         {
             await Mediator.Send(command);
-            Logger.LogInformation("Supplier {Name} created successfully.", command.Name);
+            Logger.LogInformation("Supplier added successfully.");
+            
             command = new();
-            await LoadSuppliers();
+            showSuccessAlert = true;
+            await FetchData();
         }
         catch (Exception ex)
         {
-            Logger.LogError(ex, "Error creating supplier {Name}.", command.Name);
+            Logger.LogError(ex, "Error creating supplier.");
+            errorMessage = ex.Message;
+        }
+    }
+
+    private async Task ApplyFilters()
+    {
+        skip = 0; // Reset page on new search
+        await FetchData();
+    }
+
+    private async Task ResetFilters()
+    {
+        searchTerm = null;
+        filterCountry = null;
+        skip = 0;
+        await FetchData();
+    }
+
+    private async Task ClearSearch()
+    {
+        searchTerm = null;
+        await ApplyFilters();
+    }
+
+    private async Task OnSearchKeyUp(KeyboardEventArgs e)
+    {
+        if (e.Key == "Enter")
+        {
+            await ApplyFilters();
+        }
+    }
+
+    private async Task PrevPage()
+    {
+        if (CanPrevPage)
+        {
+            skip = Math.Max(0, skip - take);
+            await FetchData();
+        }
+    }
+
+    private async Task NextPage()
+    {
+        if (CanNextPage)
+        {
+            skip += take;
+            await FetchData();
+        }
+    }
+
+    private async Task OnPageSizeChanged(ChangeEventArgs e)
+    {
+        if (int.TryParse(e.Value?.ToString(), out var newSize))
+        {
+            take = newSize;
+            skip = 0;
+            await FetchData();
         }
     }
 }

@@ -35,7 +35,8 @@
 
     protected override async Task OnInitializedAsync()
     {
-        suppliers = await Mediator.Send(new GetSuppliersQuery());
+        var result = await Mediator.Send(new GetSuppliersQuery());
+        suppliers = result.Items;
         UpdateSelectedSupplier();
     }
 

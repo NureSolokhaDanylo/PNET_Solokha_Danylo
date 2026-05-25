@@ -32,7 +32,8 @@
 
     protected override async Task OnInitializedAsync()
     {
-        categories = await Mediator.Send(new GetCategoriesQuery());
+        var result = await Mediator.Send(new GetCategoriesQuery());
+        categories = result.Items;
         UpdateSelectedCategory();
     }
 

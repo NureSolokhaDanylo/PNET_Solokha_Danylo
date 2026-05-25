@@ -1,0 +1,472 @@
+@page "/system-audit"
+@rendermode InteractiveServer
+@inject IMediator Mediator
+@inject ILogger<SystemAuditPage> Logger
+
+<PageTitle>System Audit Logs</PageTitle>
+
+<div class="container-fluid py-4">
+    <!-- Header with Gradient Title -->
+    <div class="d-flex align-items-center justify-content-between mb-4">
+        <div>
+            <h1 class="display-6 fw-bold text-gradient">System Audit Logs</h1>
+            <p class="text-muted mb-0">Monitor database events, schema updates, and user action auditing tracks.</p>
+        </div>
+        <div class="badge bg-primary px-3 py-2 fs-6 rounded-pill shadow-sm">
+            Total Logs: @totalCount
+        </div>
+    </div>
+
+    <!-- Filter Card with Glassmorphic Styling -->
+    <div class="card border-0 shadow-sm mb-4 rounded-4 filter-card">
+        <div class="card-body p-4">
+            <h5 class="fw-semibold mb-3 d-flex align-items-center">
+                <i class="bi bi-funnel-fill text-primary me-2"></i> Filters & Search
+            </h5>
+            <div class="row g-3">
+                <!-- Search term -->
+                <div class="col-md-3">
+                    <label class="form-label text-secondary small fw-medium">Search Content</label>
+                    <div class="input-group">
+                        <span class="input-group-text bg-white border-end-0"><i class="bi bi-search text-muted"></i></span>
+                        <input type="text" class="form-control border-start-0 ps-0" placeholder="e.g. Table name, column, value..." @bind="searchTerm" @bind:event="oninput" @onkeyup="OnSearchKeyUp" />
+                        @if (!string.IsNullOrEmpty(searchTerm))
+                        {
+                            <button class="btn btn-outline-secondary" type="button" @onclick="ClearSearch">
+                                <i class="bi bi-x-lg"></i>
+                            </button>
+                        }
+                    </div>
+                </div>
+
+                <!-- Severity -->
+                <div class="col-md-2">
+                    <label class="form-label text-secondary small fw-medium">Severity</label>
+                    <select class="form-select" @bind="severity">
+                        <option value="">All</option>
+                        <option value="INFO">INFO</option>
+                        <option value="WARNING">WARNING</option>
+                        <option value="ERROR">ERROR</option>
+                        <option value="CRITICAL">CRITICAL</option>
+                    </select>
+                </div>
+
+                <!-- Action Type -->
+                <div class="col-md-2">
+                    <label class="form-label text-secondary small fw-medium">Action Type</label>
+                    <select class="form-select" @bind="actionType">
+                        <option value="">All</option>
+                        <option value="INSERT">INSERT</option>
+                        <option value="UPDATE">UPDATE</option>
+                        <option value="DELETE">DELETE</option>
+                    </select>
+                </div>
+
+                <!-- Table Name -->
+                <div class="col-md-2">
+                    <label class="form-label text-secondary small fw-medium">Table Name</label>
+                    <input type="text" class="form-control" placeholder="Any" @bind="tableName" @bind:event="oninput" @onkeyup="OnSearchKeyUp" />
+                </div>
+
+                <!-- Start Date -->
+                <div class="col-md-3">
+                    <label class="form-label text-secondary small fw-medium">Date Range</label>
+                    <div class="d-flex gap-2">
+                        <input type="date" class="form-control" @bind="startDate" />
+                        <span class="align-self-center text-muted">—</span>
+                        <input type="date" class="form-control" @bind="endDate" />
+                    </div>
+                </div>
+            </div>
+
+            <!-- Action buttons -->
+            <div class="d-flex justify-content-end gap-2 mt-4">
+                <button class="btn btn-light px-4 rounded-3 text-secondary" @onclick="ResetFilters">
+                    <i class="bi bi-arrow-counterclockwise me-1"></i> Reset
+                </button>
+                <button class="btn btn-primary px-4 rounded-3" @onclick="ApplyFilters">
+                    <i class="bi bi-search me-1"></i> Apply Filters
+                </button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Data Table -->
+    <div class="card border-0 shadow-sm rounded-4 overflow-hidden">
+        <div class="card-body p-0">
+            @if (isLoading)
+            {
+                <div class="d-flex flex-column align-items-center justify-content-center py-5">
+                    <div class="spinner-border text-primary mb-3" role="status">
+                        <span class="visually-hidden">Loading...</span>
+                    </div>
+                    <span class="text-secondary">Fetching audit logs...</span>
+                </div>
+            }
+            else if (audits == null || !audits.Any())
+            {
+                <div class="text-center py-5">
+                    <div class="mb-3 text-muted">
+                        <i class="bi bi-folder-x display-3"></i>
+                    </div>
+                    <h5 class="fw-semibold text-dark">No records found</h5>
+                    <p class="text-muted px-4">Try adjusting your filters or search terms to find what you are looking for.</p>
+                </div>
+            }
+            else
+            {
+                <div class="table-responsive">
+                    <table class="table table-hover align-middle mb-0">
+                        <thead class="table-light">
+                            <tr>
+                                <th class="ps-4">Log ID</th>
+                                <th>Timestamp</th>
+                                <th>Severity</th>
+                                <th>Action</th>
+                                <th>Table</th>
+                                <th>Column</th>
+                                <th>User</th>
+                                <th class="pe-4 text-end">Details</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            @foreach (var audit in audits)
+                            {
+                                var isExpanded = expandedRows.Contains(audit.LogId);
+                                <tr>
+                                    <td class="ps-4">
+                                        <span class="badge bg-secondary-subtle text-secondary-emphasis font-monospace px-2 py-1 fs-7">#@audit.LogId</span>
+                                    </td>
+                                    <td>
+                                        <span class="text-dark small fw-medium">@audit.LogDate.ToString("yyyy-MM-dd HH:mm:ss")</span>
+                                    </td>
+                                    <td>
+                                        @if (audit.Severity == "ERROR" || audit.Severity == "CRITICAL")
+                                        {
+                                            <span class="badge bg-danger-subtle text-danger border border-danger-subtle px-2 py-1 rounded-pill">@audit.Severity</span>
+                                        }
+                                        else if (audit.Severity == "WARNING")
+                                        {
+                                            <span class="badge bg-warning-subtle text-warning border border-warning-subtle px-2 py-1 rounded-pill">@audit.Severity</span>
+                                        }
+                                        else
+                                        {
+                                            <span class="badge bg-info-subtle text-info border border-info-subtle px-2 py-1 rounded-pill">@audit.Severity</span>
+                                        }
+                                    </td>
+                                    <td>
+                                        @if (audit.ActionType == "INSERT")
+                                        {
+                                            <span class="badge bg-success-subtle text-success border border-success-subtle px-2 py-1">@audit.ActionType</span>
+                                        }
+                                        else if (audit.ActionType == "UPDATE")
+                                        {
+                                            <span class="badge bg-primary-subtle text-primary border border-primary-subtle px-2 py-1">@audit.ActionType</span>
+                                        }
+                                        else if (audit.ActionType == "DELETE")
+                                        {
+                                            <span class="badge bg-danger-subtle text-danger border border-danger-subtle px-2 py-1">@audit.ActionType</span>
+                                        }
+                                        else
+                                        {
+                                            <span class="badge bg-secondary-subtle text-secondary border border-secondary-subtle px-2 py-1">@audit.ActionType</span>
+                                        }
+                                    </td>
+                                    <td>
+                                        <span class="fw-semibold text-dark">@audit.TableName</span>
+                                        @if (audit.RecordId.HasValue)
+                                        {
+                                            <span class="text-muted small ms-1">(ID: @audit.RecordId)</span>
+                                        }
+                                    </td>
+                                    <td>
+                                        <span class="font-monospace text-secondary small">@(audit.ColumnName ?? "—")</span>
+                                    </td>
+                                    <td>
+                                        <span class="text-dark small"><i class="bi bi-person me-1"></i>@audit.UserName</span>
+                                    </td>
+                                    <td class="pe-4 text-end">
+                                        <button class="btn btn-sm btn-icon btn-light-primary rounded-circle" @onclick="() => ToggleRow(audit.LogId)" aria-label="Toggle details">
+                                            <i class="bi @(isExpanded ? "bi-chevron-up" : "bi-chevron-down")"></i>
+                                        </button>
+                                    </td>
+                                </tr>
+                                @if (isExpanded)
+                                {
+                                    <tr class="table-detail-row">
+                                        <td colspan="8" class="bg-light-subtle ps-4 pe-4 py-3">
+                                            <div class="p-3 bg-white rounded-3 border shadow-sm">
+                                                <h6 class="fw-bold text-dark border-bottom pb-2 mb-3">Audit Details View</h6>
+                                                <div class="row g-3 mb-3">
+                                                    <div class="col-sm-6 col-md-3">
+                                                        <div class="small text-muted">Log ID</div>
+                                                        <div class="fw-semibold font-monospace">@audit.LogId</div>
+                                                    </div>
+                                                    <div class="col-sm-6 col-md-3">
+                                                        <div class="small text-muted">Operation Type</div>
+                                                        <div class="fw-semibold">@audit.ActionType</div>
+                                                    </div>
+                                                    <div class="col-sm-6 col-md-3">
+                                                        <div class="small text-muted">Impacted Table</div>
+                                                        <div class="fw-semibold">@audit.TableName (Record ID: @(audit.RecordId?.ToString() ?? "N/A"))</div>
+                                                    </div>
+                                                    <div class="col-sm-6 col-md-3">
+                                                        <div class="small text-muted">Impacted Column</div>
+                                                        <div class="fw-semibold font-monospace">@(audit.ColumnName ?? "N/A")</div>
+                                                    </div>
+                                                </div>
+
+                                                <!-- Comparison View -->
+                                                <div class="row g-3">
+                                                    <div class="col-md-6">
+                                                        <div class="p-3 border rounded bg-light-subtle h-100">
+                                                            <span class="small text-muted d-block mb-1 fw-bold text-danger"><i class="bi bi-dash-circle me-1"></i>Old Value</span>
+                                                            <pre class="mb-0 text-danger-emphasis font-monospace small bg-white p-2 border rounded" style="white-space: pre-wrap; word-break: break-all;">@(string.IsNullOrEmpty(audit.OldValue) ? "[NULL]" : audit.OldValue)</pre>
+                                                        </div>
+                                                    </div>
+                                                    <div class="col-md-6">
+                                                        <div class="p-3 border rounded bg-light-subtle h-100">
+                                                            <span class="small text-muted d-block mb-1 fw-bold text-success"><i class="bi bi-plus-circle me-1"></i>New Value</span>
+                                                            <pre class="mb-0 text-success-emphasis font-monospace small bg-white p-2 border rounded" style="white-space: pre-wrap; word-break: break-all;">@(string.IsNullOrEmpty(audit.NewValue) ? "[NULL]" : audit.NewValue)</pre>
+                                                        </div>
+                                                    </div>
+                                                    @if (!string.IsNullOrEmpty(audit.AdditionalInfo))
+                                                    {
+                                                        <div class="col-12 mt-3">
+                                                            <div class="small text-muted mb-1">Additional Diagnostic Info</div>
+                                                            <div class="p-3 bg-light rounded text-dark font-monospace border-start border-4 border-info small">
+                                                                @audit.AdditionalInfo
+                                                            </div>
+                                                        </div>
+                                                    }
+                                                </div>
+                                            </div>
+                                        </td>
+                                    </tr>
+                                }
+                            }
+                        </tbody>
+                    </table>
+                </div>
+
+                <!-- Footer Pagination -->
+                <div class="d-flex flex-column flex-md-row align-items-center justify-content-between p-4 bg-light border-top gap-3">
+                    <div class="text-secondary small fw-medium">
+                        Showing <span class="text-dark">@(audits.Any() ? skip + 1 : 0)</span> to <span class="text-dark">@(Math.Min(skip + take, totalCount))</span> of <span class="text-dark">@totalCount</span> entries
+                    </div>
+                    
+                    <div class="d-flex align-items-center gap-3">
+                        <div class="d-flex align-items-center gap-2">
+                            <span class="small text-muted text-nowrap">Page size:</span>
+                            <select class="form-select form-select-sm rounded-3" style="width: auto;" value="@take" @onchange="OnPageSizeChanged">
+                                <option value="5">5</option>
+                                <option value="10">10</option>
+                                <option value="25">25</option>
+                                <option value="50">50</option>
+                            </select>
+                        </div>
+
+                        <nav aria-label="Pagination navigation">
+                            <ul class="pagination pagination-sm mb-0 rounded-3">
+                                <li class="page-item @(CanPrevPage ? "" : "disabled")">
+                                    <button class="page-item page-link rounded-start-3" @onclick="PrevPage" aria-label="Previous">
+                                        <i class="bi bi-chevron-left"></i> Prev
+                                    </button>
+                                </li>
+                                <li class="page-item active">
+                                    <span class="page-link px-3">@(CurrentPage)</span>
+                                </li>
+                                <li class="page-item @(CanNextPage ? "" : "disabled")">
+                                    <button class="page-item page-link rounded-end-3" @onclick="NextPage" aria-label="Next">
+                                        Next <i class="bi bi-chevron-right"></i>
+                                    </button>
+                                </li>
+                            </ul>
+                        </nav>
+                    </div>
+                </div>
+            }
+        </div>
+    </div>
+</div>
+
+<style>
+    .text-gradient {
+        background: linear-gradient(135deg, #1e3c72 0%, #2a5298 100%);
+        -webkit-background-clip: text;
+        -webkit-text-fill-color: transparent;
+    }
+    
+    .filter-card {
+        background: rgba(255, 255, 255, 0.8);
+        backdrop-filter: blur(10px);
+        border: 1px solid rgba(220, 224, 230, 0.6);
+    }
+    
+    .btn-light-primary {
+        background-color: #f0f4f9;
+        color: #1a73e8;
+        border: none;
+    }
+    .btn-light-primary:hover {
+        background-color: #e1edf8;
+        color: #185abc;
+    }
+    
+    .btn-icon {
+        width: 32px;
+        height: 32px;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        padding: 0;
+    }
+
+    .table-detail-row {
+        background-color: #fcfdfe;
+    }
+
+    .fs-7 {
+        font-size: 0.8rem;
+    }
+</style>
+
+@code {
+    private List<SystemAudit>? audits;
+    private int totalCount;
+    private bool isLoading = true;
+
+    // Filters state
+    private string? searchTerm;
+    private string? severity = "";
+    private string? actionType = "";
+    private string? tableName;
+    private DateTime? startDate;
+    private DateTime? endDate;
+
+    // Pagination state
+    private int skip = 0;
+    private int take = 10;
+
+    private int CurrentPage => (skip / take) + 1;
+    private bool CanPrevPage => skip > 0;
+    private bool CanNextPage => (skip + take) < totalCount;
+
+    // Expanded detail rows
+    private HashSet<int> expandedRows = new();
+
+    protected override async Task OnInitializedAsync()
+    {
+        Logger.LogInformation("Initializing SystemAuditPage component.");
+        await FetchData();
+    }
+
+    private async Task FetchData()
+    {
+        isLoading = true;
+        expandedRows.Clear();
+        StateHasChanged();
+
+        try
+        {
+            var query = new GetSystemAuditsQuery(
+                SearchTerm: searchTerm,
+                Severity: string.IsNullOrEmpty(severity) ? null : severity,
+                ActionType: string.IsNullOrEmpty(actionType) ? null : actionType,
+                TableName: tableName,
+                StartDate: startDate,
+                EndDate: endDate,
+                Skip: skip,
+                Take: take
+            );
+
+            var result = await Mediator.Send(query);
+            audits = result.Items;
+            totalCount = result.TotalCount;
+            
+            Logger.LogInformation("Fetched {Count} SystemAudits (Total {TotalCount}) for page {Page}", 
+                audits?.Count ?? 0, totalCount, CurrentPage);
+        }
+        catch (Exception ex)
+        {
+            Logger.LogError(ex, "Error fetching system audits.");
+        }
+        finally
+        {
+            isLoading = false;
+            StateHasChanged();
+        }
+    }
+
+    private async Task ApplyFilters()
+    {
+        skip = 0; // reset to first page when filtering
+        await FetchData();
+    }
+
+    private async Task ResetFilters()
+    {
+        searchTerm = null;
+        severity = "";
+        actionType = "";
+        tableName = null;
+        startDate = null;
+        endDate = null;
+        skip = 0;
+        await FetchData();
+    }
+
+    private async Task ClearSearch()
+    {
+        searchTerm = null;
+        await ApplyFilters();
+    }
+
+    private async Task OnSearchKeyUp(KeyboardEventArgs e)
+    {
+        if (e.Key == "Enter")
+        {
+            await ApplyFilters();
+        }
+    }
+
+    private async Task PrevPage()
+    {
+        if (CanPrevPage)
+        {
+            skip = Math.Max(0, skip - take);
+            await FetchData();
+        }
+    }
+
+    private async Task NextPage()
+    {
+        if (CanNextPage)
+        {
+            skip += take;
+            await FetchData();
+        }
+    }
+
+    private async Task OnPageSizeChanged(ChangeEventArgs e)
+    {
+        if (int.TryParse(e.Value?.ToString(), out var newSize))
+        {
+            take = newSize;
+            skip = 0; // Reset page
+            await FetchData();
+        }
+    }
+
+    private void ToggleRow(int logId)
+    {
+        if (expandedRows.Contains(logId))
+        {
+            expandedRows.Remove(logId);
+        }
+        else
+        {
+            expandedRows.Add(logId);
+        }
+    }
+}

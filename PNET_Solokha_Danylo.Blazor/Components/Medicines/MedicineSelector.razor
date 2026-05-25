@@ -1,0 +1,69 @@
+@using MediatR
+@using PNET_Solokha_Danylo.Application.Medicines.Queries.GetMedicines
+@using PNET_Solokha_Danylo.Domain.Entities
+@using PNET_Solokha_Danylo.Blazor.Components.Common
+@inject IMediator Mediator
+
+<SearchSelector TItem="Medicine"
+                Items="medicines"
+                SearchProperty="@(m => m.Name)"
+                SelectedItem="selectedMedicine"
+                SelectedItemChanged="HandleSelectedItemChanged"
+                Placeholder="Search medicine..."
+                OnItemSelected="HandleItemSelected">
+    <ItemTemplate Context="medicine">
+        <div class="d-flex justify-content-between">
+            <span>@medicine.Name</span>
+            <small class="text-muted">Stock: @medicine.TotalStock</small>
+        </div>
+    </ItemTemplate>
+</SearchSelector>
+
+@code {
+    [Parameter] public int? Value { get; set; }
+    [Parameter] public EventCallback<int?> ValueChanged { get; set; }
+    [Parameter] public EventCallback<Medicine?> OnMedicineSelected { get; set; }
+
+    private List<Medicine>? medicines;
+    private Medicine? selectedMedicine;
+
+    protected override async Task OnInitializedAsync()
+    {
+        var result = await Mediator.Send(new GetMedicinesQuery());
+        medicines = result.Items;
+        UpdateSelectedMedicine();
+    }
+
+    protected override void OnParametersSet()
+    {
+        UpdateSelectedMedicine();
+    }
+
+    private void UpdateSelectedMedicine()
+    {
+        if (medicines != null && Value.HasValue)
+        {
+            selectedMedicine = medicines.FirstOrDefault(m => m.MedicineId == Value.Value);
+        }
+        else
+        {
+            selectedMedicine = null;
+        }
+    }
+
+    private async Task HandleSelectedItemChanged(Medicine? medicine)
+    {
+        selectedMedicine = medicine;
+        var newValue = medicine?.MedicineId;
+        if (Value != newValue)
+        {
+            Value = newValue;
+            await ValueChanged.InvokeAsync(Value);
+        }
+    }
+
+    private async Task HandleItemSelected(Medicine? medicine)
+    {
+        await OnMedicineSelected.InvokeAsync(medicine);
+    }
+}

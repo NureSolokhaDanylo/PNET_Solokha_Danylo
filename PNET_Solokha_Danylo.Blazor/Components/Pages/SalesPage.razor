@@ -1,0 +1,611 @@
+@page "/sales"
+@rendermode InteractiveServer
+@inject IMediator Mediator
+@inject ILogger<SalesPage> Logger
+@using PNET_Solokha_Danylo.Blazor.Components.Categories
+
+<PageTitle>Sales Management</PageTitle>
+
+<div class="container-fluid py-4">
+    <!-- Header with Gradient Title -->
+    <div class="d-flex align-items-center justify-content-between mb-4">
+        <div>
+            <h1 class="display-6 fw-bold text-gradient">Sales Registration & Tracking</h1>
+            <p class="text-muted mb-0">Manage pharmaceutical transactions, verify product stock availability, and track sales revenue.</p>
+        </div>
+        <div class="badge bg-primary px-3 py-2 fs-6 rounded-pill shadow-sm">
+            Total Sales: @totalCount
+        </div>
+    </div>
+
+    <div class="row g-4">
+        <!-- Action Column (Left) -->
+        <div class="col-lg-4">
+            <!-- Add Sale Card -->
+            <div class="card border-0 shadow-sm rounded-4 mb-4">
+                <div class="card-header bg-white border-0 pt-4 px-4 pb-2">
+                    <h5 class="fw-bold mb-0 text-dark"><i class="bi bi-cart-plus text-primary me-2"></i>Register New Sale</h5>
+                </div>
+                <div class="card-body px-4 pb-4">
+                    @if (showSuccessAlert)
+                    {
+                        <div class="alert alert-success alert-dismissible fade show rounded-3" role="alert">
+                            <i class="bi bi-check-circle-fill me-2"></i> Sale registered successfully!
+                            <button type="button" class="btn-close" @onclick="() => showSuccessAlert = false" aria-label="Close"></button>
+                        </div>
+                    }
+
+                    @if (!string.IsNullOrEmpty(errorMessage))
+                    {
+                        <div class="alert alert-danger alert-dismissible fade show rounded-3" role="alert">
+                            <i class="bi bi-exclamation-triangle-fill me-2"></i> @errorMessage
+                            <button type="button" class="btn-close" @onclick="() => errorMessage = null" aria-label="Close"></button>
+                        </div>
+                    }
+
+                    <EditForm Model="command" OnValidSubmit="HandleValidSubmit" FormName="AddSaleForm">
+                        <FluentValidationValidator />
+
+                        <div class="mb-3">
+                            <label class="form-label text-secondary small fw-medium">Select Medicine</label>
+                            <MedicineSelector @bind-Value="selectedMedicineId" OnMedicineSelected="HandleMedicineSelected" />
+                            <ValidationMessage For="@(() => command.MedicineId)" class="text-danger small mt-1" />
+                            @if (selectedMedicineStock.HasValue)
+                            {
+                                <div class="form-text text-primary small mt-1 fw-medium">
+                                    <i class="bi bi-info-circle me-1"></i> Stock Available: @selectedMedicineStock.Value items
+                                </div>
+                            }
+                        </div>
+
+                        <div class="row g-2 mb-3">
+                            <div class="col-md-6">
+                                <label for="quantity" class="form-label text-secondary small fw-medium">Quantity</label>
+                                <InputNumber id="quantity" @bind-Value="command.Quantity" class="form-control rounded-3" TValue="int" />
+                                <ValidationMessage For="@(() => command.Quantity)" class="text-danger small mt-1" />
+                            </div>
+                            <div class="col-md-6">
+                                <label for="soldPrice" class="form-label text-secondary small fw-medium">Price per unit</label>
+                                <div class="input-group">
+                                    <span class="input-group-text bg-light">$</span>
+                                    <InputNumber id="soldPrice" @bind-Value="command.SoldPrice" class="form-control rounded-3" TValue="decimal" Step="0.01" />
+                                </div>
+                                <ValidationMessage For="@(() => command.SoldPrice)" class="text-danger small mt-1" />
+                            </div>
+                        </div>
+
+                        <div class="mb-3">
+                            <label for="discount" class="form-label text-secondary small fw-medium">Discount (Total amount)</label>
+                            <div class="input-group">
+                                <span class="input-group-text bg-light">$</span>
+                                <InputNumber id="discount" @bind-Value="command.Discount" class="form-control rounded-3" TValue="decimal" Step="0.01" />
+                            </div>
+                            <ValidationMessage For="@(() => command.Discount)" class="text-danger small mt-1" />
+                        </div>
+
+                        <div class="mb-3">
+                            <label for="saleDate" class="form-label text-secondary small fw-medium">Sale Date</label>
+                            <InputDate id="saleDate" @bind-Value="command.SaleDate" class="form-control rounded-3" TValue="DateTime" />
+                            <ValidationMessage For="@(() => command.SaleDate)" class="text-danger small mt-1" />
+                        </div>
+
+                        <!-- Real-time calculation badge -->
+                        <div class="p-3 mb-4 rounded-3 bg-light border border-light-subtle shadow-inner">
+                            <div class="d-flex justify-content-between align-items-center mb-1">
+                                <span class="text-secondary small fw-medium">Subtotal (Pre-discount):</span>
+                                <span class="text-dark fw-bold">$@PreDiscountTotal.ToString("F2")</span>
+                            </div>
+                            <div class="d-flex justify-content-between align-items-center mb-2">
+                                <span class="text-secondary small fw-medium">Applied Discount:</span>
+                                <span class="text-danger fw-bold">-$@command.Discount.ToString("F2")</span>
+                            </div>
+                            <hr class="my-2 border-secondary-subtle" />
+                            <div class="d-flex justify-content-between align-items-center">
+                                <span class="text-dark fw-bold">Final Revenue:</span>
+                                <span class="badge bg-success-subtle text-success fs-5 px-3 py-2 border border-success-subtle rounded-3">$@FinalTotal.ToString("F2")</span>
+                            </div>
+                        </div>
+
+                        <button type="submit" class="btn btn-primary w-100 rounded-3 py-2">
+                            <i class="bi bi-cart-check-fill me-1"></i> Register Transaction
+                        </button>
+                    </EditForm>
+                </div>
+            </div>
+
+            <!-- Stored Procedure Archiving Card -->
+            <div class="card border-0 shadow-sm rounded-4 overflow-hidden">
+                <div class="card-header bg-white border-0 pt-4 px-4 pb-2">
+                    <div class="d-flex align-items-center justify-content-between">
+                        <h5 class="fw-bold mb-0 text-dark">
+                            <i class="bi bi-archive text-danger me-2"></i>Archive Small Sales
+                        </h5>
+                        <button class="btn btn-sm btn-outline-secondary rounded-pill border-0 px-2 py-1" @onclick="ToggleArchivePanel">
+                            <i class="bi @(isArchivePanelExpanded ? "bi-chevron-up" : "bi-chevron-down")"></i>
+                        </button>
+                    </div>
+                    <p class="text-muted extra-small mb-0 mt-1">Move bulk transactions with less than k items to Sales Archive using database cursor procedures.</p>
+                </div>
+
+                @if (isArchivePanelExpanded)
+                {
+                    <div class="card-body px-4 pb-4 border-top border-light-subtle bg-light-subtle">
+                        @if (showArchiveSuccessAlert)
+                        {
+                            <div class="alert alert-success alert-dismissible fade show rounded-3" role="alert">
+                                <i class="bi bi-check-circle-fill me-2"></i> Small sales archived successfully!
+                                <button type="button" class="btn-close" @onclick="() => showArchiveSuccessAlert = false" aria-label="Close"></button>
+                            </div>
+                        }
+
+                        @if (!string.IsNullOrEmpty(archiveErrorMessage))
+                        {
+                            <div class="alert alert-danger alert-dismissible fade show rounded-3" role="alert">
+                                <i class="bi bi-exclamation-triangle-fill me-2"></i> @archiveErrorMessage
+                                <button type="button" class="btn-close" @onclick="() => archiveErrorMessage = null" aria-label="Close"></button>
+                            </div>
+                        }
+
+                        <div class="mb-3">
+                            <label class="form-label text-secondary small fw-medium">Category</label>
+                            <CategorySelector @bind-Value="archiveCategoryId" />
+                        </div>
+
+                        <div class="mb-3">
+                            <label for="archiveLimitK" class="form-label text-secondary small fw-medium">Minimum Quantity Limit (k)</label>
+                            <input id="archiveLimitK" type="number" class="form-control rounded-3" @bind="archiveLimitK" placeholder="e.g. 5" />
+                            <div class="form-text extra-small">Sales of this category with quantity less than <strong>k</strong> will be archived.</div>
+                        </div>
+
+                        <button class="btn btn-danger w-100 rounded-3 py-2 mt-2" @onclick="ExecuteArchiveProcedure" disabled="@isArchiving">
+                            @if (isArchiving)
+                            {
+                                <span class="spinner-border spinner-border-sm me-2" role="status" aria-hidden="true"></span>
+                                <span>Archiving...</span>
+                            }
+                            else
+                            {
+                                <i class="bi bi-cursor-fill me-1"></i>
+                                <span>Run Stored Cursor Procedure</span>
+                            }
+                        </button>
+                    </div>
+                }
+            </div>
+        </div>
+
+        <!-- Sales Data Column (Right) -->
+        <div class="col-lg-8">
+            <!-- Search & Filter Card -->
+            <div class="card border-0 shadow-sm mb-4 rounded-4 filter-card">
+                <div class="card-body p-4">
+                    <h5 class="fw-semibold mb-3 d-flex align-items-center">
+                        <i class="bi bi-funnel-fill text-primary me-2"></i> Filters & Search
+                    </h5>
+                    <div class="row g-3">
+                        <!-- Search Box -->
+                        <div class="col-md-6">
+                            <label class="form-label text-secondary small fw-medium">Search Medicine</label>
+                            <div class="input-group">
+                                <span class="input-group-text bg-white border-end-0"><i class="bi bi-search text-muted"></i></span>
+                                <input type="text" class="form-control border-start-0 ps-0 rounded-end-3" placeholder="e.g. Paracetamol, Ibuprofen..." @bind="searchTerm" @bind:event="oninput" @onkeyup="OnSearchKeyUp" />
+                                @if (!string.IsNullOrEmpty(searchTerm))
+                                {
+                                    <button class="btn btn-outline-secondary" type="button" @onclick="ClearSearch">
+                                        <i class="bi bi-x-lg"></i>
+                                    </button>
+                                }
+                            </div>
+                        </div>
+
+                        <!-- Selector filter -->
+                        <div class="col-md-6">
+                            <label class="form-label text-secondary small fw-medium">Filter by Medicine</label>
+                            <MedicineSelector @bind-Value="filterMedicineId" />
+                        </div>
+                    </div>
+
+                    <div class="row g-3 mt-1">
+                        <!-- Date range filters -->
+                        <div class="col-md-6">
+                            <label class="form-label text-secondary small fw-medium">Sold Date From</label>
+                            <input type="date" class="form-control rounded-3" @bind="startDate" />
+                        </div>
+                        <div class="col-md-6">
+                            <label class="form-label text-secondary small fw-medium">Sold Date To</label>
+                            <input type="date" class="form-control rounded-3" @bind="endDate" />
+                        </div>
+                    </div>
+
+                    <div class="d-flex justify-content-end gap-2 mt-4">
+                        <button class="btn btn-light px-4 rounded-3 text-secondary" @onclick="ResetFilters">
+                            <i class="bi bi-arrow-counterclockwise me-1"></i> Reset
+                        </button>
+                        <button class="btn btn-primary px-4 rounded-3" @onclick="ApplyFilters">
+                            <i class="bi bi-search me-1"></i> Apply Filters
+                        </button>
+                    </div>
+                </div>
+            </div>
+
+            <!-- List Table Card -->
+            <div class="card border-0 shadow-sm rounded-4 overflow-hidden">
+                <div class="card-body p-0">
+                    @if (isLoading)
+                    {
+                        <div class="d-flex flex-column align-items-center justify-content-center py-5">
+                            <div class="spinner-border text-primary mb-3" role="status">
+                                <span class="visually-hidden">Loading...</span>
+                            </div>
+                            <span class="text-secondary">Fetching sales...</span>
+                        </div>
+                    }
+                    else if (sales == null || !sales.Any())
+                    {
+                        <div class="text-center py-5">
+                            <div class="mb-3 text-muted">
+                                <i class="bi bi-cart-x display-3"></i>
+                            </div>
+                            <h5 class="fw-semibold text-dark">No transaction records found</h5>
+                            <p class="text-muted px-4">There are no sales registered matching your current filter criteria.</p>
+                        </div>
+                    }
+                    else
+                    {
+                        <div class="table-responsive">
+                            <table class="table table-hover align-middle mb-0">
+                                <thead class="table-light">
+                                    <tr>
+                                        <th class="ps-4">ID</th>
+                                        <th>Medicine</th>
+                                        <th class="text-center">Qty</th>
+                                        <th>Price per Unit</th>
+                                        <th>Discount</th>
+                                        <th>Revenue Total</th>
+                                        <th class="pe-4">Date</th>
+                                    </tr>
+                                </thead>
+                                <tbody>
+                                    @foreach (var s in sales)
+                                    {
+                                        <tr>
+                                            <td class="ps-4">
+                                                <span class="badge bg-secondary-subtle text-secondary-emphasis font-monospace px-2 py-1 fs-7">#@s.SaleId</span>
+                                            </td>
+                                            <td>
+                                                <span class="fw-bold text-dark">@s.MedicineName</span>
+                                            </td>
+                                            <td class="text-center">
+                                                <span class="badge bg-light text-dark font-monospace border px-2 py-1 fs-7">@s.Quantity</span>
+                                            </td>
+                                            <td>
+                                                <span class="text-secondary small">$@s.SoldPrice.ToString("F2")</span>
+                                            </td>
+                                            <td>
+                                                @if (s.Discount > 0)
+                                                {
+                                                    <span class="text-danger small"><i class="bi bi-tag-fill me-1"></i>-$@s.Discount.ToString("F2")</span>
+                                                }
+                                                else
+                                                {
+                                                    <span class="text-muted small">None</span>
+                                                }
+                                            </td>
+                                            <td>
+                                                <span class="fw-bold text-success">$@s.TotalPrice.ToString("F2")</span>
+                                            </td>
+                                            <td class="pe-4 text-secondary small">
+                                                <span>@s.SaleDate.ToString("yyyy-MM-dd HH:mm")</span>
+                                            </td>
+                                        </tr>
+                                    }
+                                </tbody>
+                            </table>
+                        </div>
+
+                        <!-- Footer Pagination -->
+                        <div class="d-flex flex-column flex-md-row align-items-center justify-content-between p-4 bg-light border-top gap-3">
+                            <div class="text-secondary small fw-medium">
+                                Showing <span class="text-dark">@(sales.Any() ? skip + 1 : 0)</span> to <span class="text-dark">@(Math.Min(skip + take, totalCount))</span> of <span class="text-dark">@totalCount</span> entries
+                            </div>
+                            
+                            <div class="d-flex align-items-center gap-3">
+                                <div class="d-flex align-items-center gap-2">
+                                    <span class="small text-muted text-nowrap">Page size:</span>
+                                    <select class="form-select form-select-sm rounded-3" style="width: auto;" value="@take" @onchange="OnPageSizeChanged">
+                                        <option value="5">5</option>
+                                        <option value="10">10</option>
+                                        <option value="25">25</option>
+                                        <option value="50">50</option>
+                                    </select>
+                                </div>
+
+                                <nav aria-label="Pagination navigation">
+                                    <ul class="pagination pagination-sm mb-0 rounded-3">
+                                        <li class="page-item @(CanPrevPage ? "" : "disabled")">
+                                            <button class="page-item page-link rounded-start-3" @onclick="PrevPage" aria-label="Previous">
+                                                <i class="bi bi-chevron-left"></i> Prev
+                                            </button>
+                                        </li>
+                                        <li class="page-item active">
+                                            <span class="page-link px-3">@(CurrentPage)</span>
+                                        </li>
+                                        <li class="page-item @(CanNextPage ? "" : "disabled")">
+                                            <button class="page-item page-link rounded-end-3" @onclick="NextPage" aria-label="Next">
+                                                Next <i class="bi bi-chevron-right"></i>
+                                            </button>
+                                        </li>
+                                    </ul>
+                                </nav>
+                            </div>
+                        </div>
+                    }
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<style>
+    .text-gradient {
+        background: linear-gradient(135deg, #1e3c72 0%, #2a5298 100%);
+        -webkit-background-clip: text;
+        -webkit-text-fill-color: transparent;
+    }
+    
+    .filter-card {
+        background: rgba(255, 255, 255, 0.8);
+        backdrop-filter: blur(10px);
+        border: 1px solid rgba(220, 224, 230, 0.6);
+    }
+
+    .fs-7 {
+        font-size: 0.8rem;
+    }
+
+    .extra-small {
+        font-size: 0.72rem;
+    }
+
+    .bg-light-subtle {
+        background-color: #f9fbfd !important;
+    }
+
+    .shadow-inner {
+        box-shadow: inset 0 2px 4px 0 rgba(0, 0, 0, 0.04);
+    }
+</style>
+
+@code {
+    private CreateSaleCommand command = new();
+    private List<SaleDto>? sales;
+    private int totalCount;
+    private bool isLoading = true;
+
+    // Filters state
+    private string? searchTerm;
+    private int? filterMedicineId;
+    private DateTime? startDate;
+    private DateTime? endDate;
+
+    // Success and error indicators for sale form
+    private bool showSuccessAlert = false;
+    private string? errorMessage;
+
+    // Success and error indicators for archiving process
+    private bool isArchivePanelExpanded = false;
+    private bool isArchiving = false;
+    private int? archiveCategoryId;
+    private int archiveLimitK = 5;
+    private bool showArchiveSuccessAlert = false;
+    private string? archiveErrorMessage;
+
+    // Selected medicine details in Form
+    private int? selectedMedicineStock;
+
+    // Pagination state
+    private int skip = 0;
+    private int take = 10;
+
+    private int CurrentPage => (skip / take) + 1;
+    private bool CanPrevPage => skip > 0;
+    private bool CanNextPage => (skip + take) < totalCount;
+
+    // Bidirectional parameter handling for Form Medicine selector
+    private int? selectedMedicineId
+    {
+        get => command.MedicineId > 0 ? command.MedicineId : null;
+        set => command.MedicineId = value ?? 0;
+    }
+
+    // Mathematical subtotal and total calculations
+    private decimal PreDiscountTotal => command.SoldPrice * command.Quantity;
+    private decimal FinalTotal => Math.Max(0, PreDiscountTotal - command.Discount);
+
+    protected override async Task OnInitializedAsync()
+    {
+        Logger.LogInformation("Initializing SalesPage component.");
+        await FetchData();
+    }
+
+    private async Task FetchData()
+    {
+        isLoading = true;
+        StateHasChanged();
+
+        try
+        {
+            var query = new GetSalesQuery(
+                SearchTerm: searchTerm,
+                MedicineId: filterMedicineId,
+                StartDate: startDate,
+                EndDate: endDate,
+                Skip: skip,
+                Take: take
+            );
+
+            var result = await Mediator.Send(query);
+            sales = result.Items;
+            totalCount = result.TotalCount;
+
+            Logger.LogInformation("Fetched {Count} sales (Total {Total}) for page {Page}.",
+                sales?.Count ?? 0, totalCount, CurrentPage);
+        }
+        catch (Exception ex)
+        {
+            Logger.LogError(ex, "Error fetching sales.");
+        }
+        finally
+        {
+            isLoading = false;
+            StateHasChanged();
+        }
+    }
+
+    private async Task HandleValidSubmit()
+    {
+        showSuccessAlert = false;
+        errorMessage = null;
+        Logger.LogInformation("Submitting CreateSaleCommand for MedicineId {MedicineId}.", command.MedicineId);
+
+        try
+        {
+            await Mediator.Send(command);
+            Logger.LogInformation("Sale registered successfully.");
+            
+            command = new();
+            selectedMedicineStock = null;
+            showSuccessAlert = true;
+            await FetchData();
+        }
+        catch (Exception ex)
+        {
+            Logger.LogError(ex, "Error registering sale.");
+            errorMessage = ex.Message;
+        }
+    }
+
+    private void HandleMedicineSelected(Medicine? medicine)
+    {
+        if (medicine != null)
+        {
+            command.SoldPrice = medicine.BasePrice;
+            selectedMedicineStock = medicine.TotalStock;
+            if (command.Quantity == 0)
+            {
+                command.Quantity = 1;
+            }
+        }
+        else
+        {
+            selectedMedicineStock = null;
+        }
+    }
+
+    private void ToggleArchivePanel()
+    {
+        isArchivePanelExpanded = !isArchivePanelExpanded;
+    }
+
+    private async Task ExecuteArchiveProcedure()
+    {
+        showArchiveSuccessAlert = false;
+        archiveErrorMessage = null;
+
+        if (!archiveCategoryId.HasValue)
+        {
+            archiveErrorMessage = "Category selection is required for archiving.";
+            return;
+        }
+
+        if (archiveLimitK <= 0)
+        {
+            archiveErrorMessage = "Minimum quantity limit must be greater than 0.";
+            return;
+        }
+
+        isArchiving = true;
+        Logger.LogInformation("Running stored procedure to archive small sales of CategoryId {CategoryId} with limit k={LimitK}.",
+            archiveCategoryId.Value, archiveLimitK);
+
+        try
+        {
+            var archCommand = new ArchiveSmallSalesCommand(archiveCategoryId.Value, archiveLimitK);
+            await Mediator.Send(archCommand);
+
+            Logger.LogInformation("Archiving completed successfully.");
+            showArchiveSuccessAlert = true;
+            archiveCategoryId = null;
+            
+            // Re-fetch sales in grid
+            await FetchData();
+        }
+        catch (Exception ex)
+        {
+            Logger.LogError(ex, "Error executing cursor archiving procedure.");
+            archiveErrorMessage = ex.Message;
+        }
+        finally
+        {
+            isArchiving = false;
+        }
+    }
+
+    private async Task ApplyFilters()
+    {
+        skip = 0; // reset page on new search
+        await FetchData();
+    }
+
+    private async Task ResetFilters()
+    {
+        searchTerm = null;
+        filterMedicineId = null;
+        startDate = null;
+        endDate = null;
+        skip = 0;
+        await FetchData();
+    }
+
+    private async Task ClearSearch()
+    {
+        searchTerm = null;
+        await ApplyFilters();
+    }
+
+    private async Task OnSearchKeyUp(KeyboardEventArgs e)
+    {
+        if (e.Key == "Enter")
+        {
+            await ApplyFilters();
+        }
+    }
+
+    private async Task PrevPage()
+    {
+        if (CanPrevPage)
+        {
+            skip = Math.Max(0, skip - take);
+            await FetchData();
+        }
+    }
+
+    private async Task NextPage()
+    {
+        if (CanNextPage)
+        {
+            skip += take;
+            await FetchData();
+        }
+    }
+
+    private async Task OnPageSizeChanged(ChangeEventArgs e)
+    {
+        if (int.TryParse(e.Value?.ToString(), out var newSize))
+        {
+            take = newSize;
+            skip = 0;
+            await FetchData();
+        }
+    }
+}
