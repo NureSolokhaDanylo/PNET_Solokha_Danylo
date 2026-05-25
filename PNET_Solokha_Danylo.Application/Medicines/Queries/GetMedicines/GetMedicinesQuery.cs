@@ -37,9 +37,7 @@ public class GetMedicinesQueryHandler(
         {
             var term = request.SearchTerm.Trim().ToLower();
             baseQuery = baseQuery.Where(m => 
-                m.Name.ToLower().Contains(term) || 
-                (m.Category != null && m.Category.Name.ToLower().Contains(term)) ||
-                (m.Supplier != null && m.Supplier.Name.ToLower().Contains(term)));
+                m.Name.ToLower().Contains(term));
         }
 
         if (request.CategoryId.HasValue && request.CategoryId.Value > 0)

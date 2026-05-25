@@ -33,7 +33,6 @@ public class GetSuppliersQueryHandler(
             var term = request.SearchTerm.Trim().ToLower();
             baseQuery = baseQuery.Where(s => 
                 s.Name.ToLower().Contains(term) || 
-                s.Country.ToLower().Contains(term) || 
                 (s.Notes != null && s.Notes.ToLower().Contains(term)));
         }
 

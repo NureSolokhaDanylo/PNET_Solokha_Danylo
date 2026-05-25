@@ -25,7 +25,7 @@
             </h5>
             <div class="row g-3">
                 <!-- Search term -->
-                <div class="col-md-3">
+                <div class="col-md-4">
                     <label class="form-label text-secondary small fw-medium">Search Content</label>
                     <div class="input-group">
                         <span class="input-group-text bg-white border-end-0"><i class="bi bi-search text-muted"></i></span>
@@ -39,37 +39,23 @@
                     </div>
                 </div>
 
-                <!-- Severity -->
-                <div class="col-md-2">
-                    <label class="form-label text-secondary small fw-medium">Severity</label>
-                    <select class="form-select" @bind="severity">
-                        <option value="">All</option>
-                        <option value="INFO">INFO</option>
-                        <option value="WARNING">WARNING</option>
-                        <option value="ERROR">ERROR</option>
-                        <option value="CRITICAL">CRITICAL</option>
-                    </select>
-                </div>
-
-                <!-- Action Type -->
-                <div class="col-md-2">
-                    <label class="form-label text-secondary small fw-medium">Action Type</label>
-                    <select class="form-select" @bind="actionType">
-                        <option value="">All</option>
-                        <option value="INSERT">INSERT</option>
-                        <option value="UPDATE">UPDATE</option>
-                        <option value="DELETE">DELETE</option>
-                    </select>
-                </div>
-
                 <!-- Table Name -->
-                <div class="col-md-2">
+                <div class="col-md-4">
                     <label class="form-label text-secondary small fw-medium">Table Name</label>
-                    <input type="text" class="form-control" placeholder="Any" @bind="tableName" @bind:event="oninput" @onkeyup="OnSearchKeyUp" />
+                    <select class="form-select" @bind="tableName">
+                        <option value="">All Tables</option>
+                        <option value="Categories">Categories</option>
+                        <option value="Suppliers">Suppliers</option>
+                        <option value="Medicines">Medicines</option>
+                        <option value="Inventory">Inventory</option>
+                        <option value="Sales">Sales</option>
+                        <option value="SalesArchive">SalesArchive</option>
+                        <option value="SystemAudit">SystemAudit</option>
+                    </select>
                 </div>
 
-                <!-- Start Date -->
-                <div class="col-md-3">
+                <!-- Date Range -->
+                <div class="col-md-4">
                     <label class="form-label text-secondary small fw-medium">Date Range</label>
                     <div class="d-flex gap-2">
                         <input type="date" class="form-control" @bind="startDate" />
@@ -284,9 +270,7 @@
 
     // Filters state
     private string? searchTerm;
-    private string? severity = "";
-    private string? actionType = "";
-    private string? tableName;
+    private string? tableName = "";
     private DateTime? startDate;
     private DateTime? endDate;
 
@@ -315,9 +299,9 @@
         {
             var query = new GetSystemAuditsQuery(
                 SearchTerm: searchTerm,
-                Severity: string.IsNullOrEmpty(severity) ? null : severity,
-                ActionType: string.IsNullOrEmpty(actionType) ? null : actionType,
-                TableName: tableName,
+                Severity: null,
+                ActionType: null,
+                TableName: string.IsNullOrEmpty(tableName) ? null : tableName,
                 StartDate: startDate,
                 EndDate: endDate,
                 Skip: skip,
@@ -351,9 +335,7 @@
     private async Task ResetFilters()
     {
         searchTerm = null;
-        severity = "";
-        actionType = "";
-        tableName = null;
+        tableName = "";
         startDate = null;
         endDate = null;
         skip = 0;

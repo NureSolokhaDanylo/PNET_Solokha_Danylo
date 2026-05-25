@@ -22,11 +22,10 @@ public class SaleDetailsDto
     
     // Statistics
     public decimal TotalRevenue => Quantity * SoldPrice;
-    public decimal OriginalPriceValuation => Quantity * MedicineBasePrice;
     /// <summary>Total customer savings = the flat discount applied to the whole order.</summary>
     public decimal Savings => Discount;
     /// <summary>Final amount actually paid: (SoldPrice × Qty) − Discount.</summary>
-    public decimal FinalTotal => TotalRevenue - Discount;
+    public decimal FinalTotal => Math.Max(0, TotalRevenue - Discount);
 }
 
 public record GetSaleDetailsQuery(int SaleId) : IRequest<SaleDetailsDto?>;

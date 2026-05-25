@@ -1,0 +1,136 @@
+@using MediatR
+@using PNET_Solokha_Danylo.Application.Medicines.Commands.UpdateMedicine
+@using PNET_Solokha_Danylo.Blazor.Components.Categories
+@using PNET_Solokha_Danylo.Blazor.Components.Suppliers
+
+<div class="card border-0 shadow-sm rounded-4 mb-4">
+    <div class="card-header bg-white border-0 pt-4 px-4 pb-2">
+        <h5 class="fw-bold mb-0 text-dark"><i class="bi bi-pencil-fill text-primary me-2"></i>Edit Medicine</h5>
+    </div>
+    <div class="card-body px-4 pb-4">
+        @if (!string.IsNullOrEmpty(errorMessage))
+        {
+            <div class="alert alert-danger alert-dismissible fade show rounded-3 mb-3" role="alert">
+                <i class="bi bi-exclamation-triangle-fill me-2"></i> @errorMessage
+                <button type="button" class="btn-close" @onclick="() => errorMessage = null" aria-label="Close"></button>
+            </div>
+        }
+
+        <EditForm Model="command" OnValidSubmit="HandleSubmit" FormName="EditMedicineFormInline">
+            <FluentValidationValidator />
+            
+            <div class="row g-3">
+                <div class="col-md-6">
+                    <label class="form-label text-secondary small fw-medium">Medicine Name</label>
+                    <InputText @bind-Value="command.Name" class="form-control rounded-3" placeholder="e.g. Paracetamol" />
+                    <ValidationMessage For="@(() => command.Name)" class="text-danger small mt-1" />
+                </div>
+
+                <div class="col-md-6">
+                    <label class="form-label text-secondary small fw-medium">Base Price (₴)</label>
+                    <InputNumber @bind-Value="command.BasePrice" class="form-control rounded-3" TValue="decimal" Step="0.01" />
+                    <ValidationMessage For="@(() => command.BasePrice)" class="text-danger small mt-1" />
+                </div>
+
+                <div class="col-md-6">
+                    <label class="form-label text-secondary small fw-medium">Category</label>
+                    <CategorySelector @bind-Value="selectedCategoryId" />
+                    <ValidationMessage For="@(() => command.CategoryId)" class="text-danger small mt-1" />
+                </div>
+
+                <div class="col-md-6">
+                    <label class="form-label text-secondary small fw-medium">Supplier</label>
+                    <SupplierSelector @bind-Value="selectedSupplierId" />
+                    <ValidationMessage For="@(() => command.SupplierId)" class="text-danger small mt-1" />
+                </div>
+
+                <div class="col-12">
+                    <div class="form-check form-switch p-3 bg-light rounded-3 border">
+                        <input class="form-check-input ms-0 me-2" type="checkbox" id="isActive" @bind="command.IsActive" />
+                        <label class="form-check-label fw-semibold text-dark" for="isActive">Medicine is Active</label>
+                        <div class="small text-muted mt-1 ms-1">Inactive medicines are excluded from active warehouse catalog views unless filtered manually.</div>
+                    </div>
+                </div>
+            </div>
+
+            <div class="d-flex gap-2 mt-4">
+                <button type="submit" class="btn btn-primary rounded-3 px-4" disabled="@isSaving">
+                    @if (isSaving)
+                    {
+                        <span class="spinner-border spinner-border-sm me-1" role="status"></span>
+                    }
+                    else
+                    {
+                        <i class="bi bi-save me-1"></i>
+                    }
+                    Save Changes
+                </button>
+                <button type="button" class="btn btn-outline-secondary rounded-3" @onclick="OnCancel" disabled="@isSaving">
+                    <i class="bi bi-x-lg me-1"></i> Cancel
+                </button>
+            </div>
+        </EditForm>
+    </div>
+</div>
+
+@code {
+    [Parameter] public int MedicineId { get; set; }
+    [Parameter] public string InitialName { get; set; } = string.Empty;
+    [Parameter] public int InitialCategoryId { get; set; }
+    [Parameter] public int InitialSupplierId { get; set; }
+    [Parameter] public decimal InitialBasePrice { get; set; }
+    [Parameter] public bool InitialIsActive { get; set; }
+    [Parameter] public EventCallback OnSaved { get; set; }
+    [Parameter] public EventCallback OnCancel { get; set; }
+
+    [Inject] private IMediator Mediator { get; set; } = default!;
+    [Inject] private ILogger<EditMedicineForm> Logger { get; set; } = default!;
+
+    private UpdateMedicineCommand command = new();
+    private bool isSaving = false;
+    private string? errorMessage;
+
+    private int? selectedCategoryId
+    {
+        get => command.CategoryId > 0 ? command.CategoryId : null;
+        set => command.CategoryId = value ?? 0;
+    }
+
+    private int? selectedSupplierId
+    {
+        get => command.SupplierId > 0 ? command.SupplierId : null;
+        set => command.SupplierId = value ?? 0;
+    }
+
+    protected override void OnParametersSet()
+    {
+        command.MedicineId = MedicineId;
+        command.Name = InitialName;
+        command.CategoryId = InitialCategoryId;
+        command.SupplierId = InitialSupplierId;
+        command.BasePrice = InitialBasePrice;
+        command.IsActive = InitialIsActive;
+    }
+
+    private async Task HandleSubmit()
+    {
+        isSaving = true;
+        errorMessage = null;
+
+        try
+        {
+            await Mediator.Send(command);
+            Logger.LogInformation("Medicine {MedicineId} updated successfully via component.", MedicineId);
+            await OnSaved.InvokeAsync();
+        }
+        catch (Exception ex)
+        {
+            Logger.LogError(ex, "Error updating medicine {MedicineId} in component.", MedicineId);
+            errorMessage = ex.Message;
+        }
+        finally
+        {
+            isSaving = false;
+        }
+    }
+}

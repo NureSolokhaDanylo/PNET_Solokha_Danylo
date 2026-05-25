@@ -68,7 +68,6 @@ public class GetInventoriesQueryHandler(
                 var term = request.SearchTerm.Trim().ToLower();
                 baseQuery = baseQuery.Where(x =>
                     x.BatchNumber.ToLower().Contains(term) ||
-                    x.MedicineName.ToLower().Contains(term) ||
                     (x.Location != null && x.Location.ToLower().Contains(term)));
             }
 

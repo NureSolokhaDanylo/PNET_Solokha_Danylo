@@ -1,6 +1,7 @@
 @page "/medicines/{MedicineId:int}"
 @rendermode InteractiveServer
 @using PNET_Solokha_Danylo.Application.Medicines.Queries.GetMedicineDetails
+@using PNET_Solokha_Danylo.Application.Medicines.Commands.DeleteMedicine
 @inject IMediator Mediator
 @inject NavigationManager NavigationManager
 @inject ILogger<MedicineDetails> Logger
@@ -16,10 +17,107 @@
                 <li class="breadcrumb-item active" aria-current="page">Details</li>
             </ol>
         </nav>
-        <a href="medicines" class="btn btn-outline-secondary btn-sm rounded-3">
-            <i class="bi bi-arrow-left me-1"></i> Back to List
-        </a>
+        <div class="d-flex gap-2">
+            @if (!isEditMode && !isDeleteConfirm && details != null)
+            {
+                <button class="btn btn-outline-primary btn-sm rounded-3" @onclick="EnterEditMode">
+                    <i class="bi bi-pencil-fill me-1"></i> Edit
+                </button>
+                <button class="btn btn-outline-danger btn-sm rounded-3" @onclick="EnterDeleteConfirm">
+                    <i class="bi bi-trash3-fill me-1"></i> Delete
+                </button>
+            }
+            <a href="medicines" class="btn btn-outline-secondary btn-sm rounded-3">
+                <i class="bi bi-arrow-left me-1"></i> Back to List
+            </a>
+        </div>
     </div>
+
+    <!-- Global action alerts -->
+    @if (!string.IsNullOrEmpty(actionError))
+    {
+        <div class="alert alert-danger alert-dismissible fade show rounded-4 shadow-sm mb-4" role="alert">
+            <i class="bi bi-exclamation-triangle-fill me-2"></i> @actionError
+            <button type="button" class="btn-close" @onclick="() => actionError = null" aria-label="Close"></button>
+        </div>
+    }
+    @if (showActionSuccess)
+    {
+        <div class="alert alert-success alert-dismissible fade show rounded-4 shadow-sm mb-4" role="alert">
+            <i class="bi bi-check-circle-fill me-2"></i> Medicine updated successfully!
+            <button type="button" class="btn-close" @onclick="() => showActionSuccess = false" aria-label="Close"></button>
+        </div>
+    }
+
+    <!-- Delete Confirmation Panel -->
+    @if (isDeleteConfirm && details != null)
+    {
+        <div class="card border-0 shadow-sm rounded-4 mb-4 border-danger" style="border: 2px solid var(--bs-danger) !important;">
+            <div class="card-body p-4">
+                <div class="d-flex align-items-start gap-3">
+                    <div class="bg-danger-subtle text-danger rounded-3 p-3 flex-shrink-0">
+                        <i class="bi bi-exclamation-triangle-fill fs-4"></i>
+                    </div>
+                    <div class="flex-grow-1">
+                        <h5 class="fw-bold text-danger mb-1">Delete Medicine?</h5>
+                        <p class="text-secondary mb-3">
+                            You are about to permanently delete <strong>«@details.Name»</strong> (ID #@details.MedicineId).
+                            This action cannot be undone.<br />
+                            <span class="small text-muted">
+                                @if (details.TotalUnitsSold > 0)
+                                {
+                                    <span class="text-danger fw-bold"><i class="bi bi-x-circle-fill me-1"></i> Deletion is BLOCKED:</span>
+                                    <span> This medicine has historical sales records. Use the Edit form to change its status to Inactive instead.</span>
+                                }
+                                else if (details.ActiveBatchesCount > 0)
+                                {
+                                    <span class="text-warning fw-bold"><i class="bi bi-exclamation-triangle-fill me-1"></i> Warning:</span>
+                                    <span> Deleting this medicine will also <strong>cascade-delete all @details.ActiveBatchesCount active stock batches</strong> from the warehouse!</span>
+                                }
+                                else
+                                {
+                                    <span>This medicine can be safely deleted since it has no active stock or sales history.</span>
+                                }
+                            </span>
+                        </p>
+                        <div class="d-flex gap-2">
+                            @if (details.TotalUnitsSold == 0)
+                            {
+                                <button class="btn btn-danger rounded-3 px-4" @onclick="ConfirmDelete" disabled="@isActionLoading">
+                                    @if (isActionLoading)
+                                    {
+                                        <span class="spinner-border spinner-border-sm me-1" role="status"></span>
+                                    }
+                                    else
+                                    {
+                                        <i class="bi bi-trash3-fill me-1"></i>
+                                    }
+                                    Confirm Delete
+                                </button>
+                            }
+                            <button class="btn btn-outline-secondary rounded-3" @onclick="CancelAction" disabled="@isActionLoading">
+                                <i class="bi bi-x-lg me-1"></i> Cancel
+                            </button>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    }
+
+    <!-- Edit Form Panel -->
+    @if (isEditMode && details != null)
+    {
+        <PNET_Solokha_Danylo.Blazor.Components.Medicines.EditMedicineForm 
+            MedicineId="MedicineId" 
+            InitialName="@details.Name" 
+            InitialCategoryId="@details.CategoryId" 
+            InitialSupplierId="@details.SupplierId" 
+            InitialBasePrice="@details.BasePrice" 
+            InitialIsActive="@details.IsActive" 
+            OnSaved="HandleEditSuccess" 
+            OnCancel="CancelAction" />
+    }
 
     @if (isLoading)
     {
@@ -338,6 +436,13 @@
     private bool isLoading = true;
     private string activeTab = "batches";
 
+    // Edit/Delete UI state
+    private bool isEditMode = false;
+    private bool isDeleteConfirm = false;
+    private bool isActionLoading = false;
+    private bool showActionSuccess = false;
+    private string? actionError;
+
     protected override async Task OnParametersSetAsync()
     {
         Logger.LogInformation("Loading details for MedicineId={MedicineId}", MedicineId);
@@ -359,5 +464,74 @@
     private void SetActiveTab(string tab)
     {
         activeTab = tab;
+    }
+
+    private void EnterEditMode()
+    {
+        actionError = null;
+        showActionSuccess = false;
+        isEditMode = true;
+        isDeleteConfirm = false;
+    }
+
+    private void EnterDeleteConfirm()
+    {
+        actionError = null;
+        showActionSuccess = false;
+        isDeleteConfirm = true;
+        isEditMode = false;
+    }
+
+    private void CancelAction()
+    {
+        isEditMode = false;
+        isDeleteConfirm = false;
+        actionError = null;
+    }
+
+    private async Task HandleEditSuccess()
+    {
+        isLoading = true;
+        showActionSuccess = false;
+        actionError = null;
+
+        try
+        {
+            details = await Mediator.Send(new GetMedicineDetailsQuery(MedicineId));
+            isEditMode = false;
+            showActionSuccess = true;
+        }
+        catch (Exception ex)
+        {
+            Logger.LogError(ex, "Error refreshing medicine details after save.");
+            actionError = ex.Message;
+        }
+        finally
+        {
+            isLoading = false;
+        }
+    }
+
+    private async Task ConfirmDelete()
+    {
+        isActionLoading = true;
+        actionError = null;
+
+        try
+        {
+            await Mediator.Send(new DeleteMedicineCommand(MedicineId));
+            Logger.LogInformation("Medicine {MedicineId} deleted successfully.", MedicineId);
+            NavigationManager.NavigateTo("/medicines");
+        }
+        catch (Exception ex)
+        {
+            Logger.LogError(ex, "Error deleting medicine {MedicineId}.", MedicineId);
+            actionError = ex.Message;
+            isDeleteConfirm = false;
+        }
+        finally
+        {
+            isActionLoading = false;
+        }
     }
 }
