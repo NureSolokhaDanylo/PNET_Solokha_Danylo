@@ -1,0 +1,71 @@
+@using MediatR
+@using PNET_Solokha_Danylo.Application.Categories.Queries.GetCategories
+@using PNET_Solokha_Danylo.Domain.Entities
+@using PNET_Solokha_Danylo.Blazor.Components.Common
+@inject IMediator Mediator
+
+<SearchSelector TItem="Category"
+                Items="categories"
+                SearchProperty="@(c => c.Name)"
+                SelectedItem="selectedCategory"
+                SelectedItemChanged="HandleSelectedItemChanged"
+                Placeholder="Search category..."
+                OnItemSelected="HandleItemSelected">
+    <ItemTemplate Context="category">
+        <div class="d-flex justify-content-between">
+            <span>@category.Name</span>
+            @if (!string.IsNullOrEmpty(category.Description))
+            {
+                <small class="text-muted">@category.Description</small>
+            }
+        </div>
+    </ItemTemplate>
+</SearchSelector>
+
+@code {
+    [Parameter] public int? Value { get; set; }
+    [Parameter] public EventCallback<int?> ValueChanged { get; set; }
+    [Parameter] public EventCallback<Category?> OnCategorySelected { get; set; }
+
+    private List<Category>? categories;
+    private Category? selectedCategory;
+
+    protected override async Task OnInitializedAsync()
+    {
+        categories = await Mediator.Send(new GetCategoriesQuery());
+        UpdateSelectedCategory();
+    }
+
+    protected override void OnParametersSet()
+    {
+        UpdateSelectedCategory();
+    }
+
+    private void UpdateSelectedCategory()
+    {
+        if (categories != null && Value.HasValue)
+        {
+            selectedCategory = categories.FirstOrDefault(c => c.CategoryId == Value.Value);
+        }
+        else
+        {
+            selectedCategory = null;
+        }
+    }
+
+    private async Task HandleSelectedItemChanged(Category? category)
+    {
+        selectedCategory = category;
+        var newValue = category?.CategoryId;
+        if (Value != newValue)
+        {
+            Value = newValue;
+            await ValueChanged.InvokeAsync(Value);
+        }
+    }
+
+    private async Task HandleItemSelected(Category? category)
+    {
+        await OnCategorySelected.InvokeAsync(category);
+    }
+}

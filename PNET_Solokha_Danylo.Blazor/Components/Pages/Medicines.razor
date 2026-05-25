@@ -1,0 +1,162 @@
+@page "/medicines"
+@rendermode InteractiveServer
+@using PNET_Solokha_Danylo.Blazor.Components.Categories
+@using PNET_Solokha_Danylo.Blazor.Components.Suppliers
+@inject IMediator Mediator
+@inject ILogger<Medicines> Logger
+
+<PageTitle>Medicines</PageTitle>
+
+<h1>Medicines</h1>
+
+<div class="row">
+    <div class="col-md-4">
+        <div class="card mb-4">
+            <div class="card-header">
+                <h3 class="card-title mb-0">Add New Medicine</h3>
+            </div>
+            <div class="card-body">
+                <EditForm Model="command" OnValidSubmit="HandleValidSubmit" FormName="AddMedicineForm">
+                    <FluentValidationValidator />
+                    
+                    <div class="mb-3">
+                        <label for="name" class="form-label">Name</label>
+                        <InputText id="name" @bind-Value="command.Name" class="form-control" />
+                        <ValidationMessage For="@(() => command.Name)" />
+                    </div>
+
+                    <div class="mb-3">
+                        <label class="form-label">Category</label>
+                        <CategorySelector @bind-Value="selectedCategoryId" />
+                        <ValidationMessage For="@(() => command.CategoryId)" />
+                    </div>
+
+                    <div class="mb-3">
+                        <label class="form-label">Supplier</label>
+                        <SupplierSelector @bind-Value="selectedSupplierId" />
+                        <ValidationMessage For="@(() => command.SupplierId)" />
+                    </div>
+
+                    <div class="mb-3">
+                        <label for="basePrice" class="form-label">Base Price</label>
+                        <InputNumber id="basePrice" @bind-Value="command.BasePrice" class="form-control" TValue="decimal" Step="0.01" />
+                        <ValidationMessage For="@(() => command.BasePrice)" />
+                    </div>
+
+                    <div class="mb-3">
+                        <label class="form-label">Total Stock</label>
+                        <input type="text" class="form-control" value="0" disabled />
+                        <small class="text-muted">Initial stock is always 0.</small>
+                    </div>
+
+                    <button type="submit" class="btn btn-primary">Add Medicine</button>
+                </EditForm>
+            </div>
+        </div>
+    </div>
+    
+    <div class="col-md-8">
+        <div class="card">
+            <div class="card-header">
+                <h3 class="card-title mb-0">Current Medicines</h3>
+            </div>
+            <div class="card-body">
+                @if (medicines == null)
+                {
+                    <p><em>Loading...</em></p>
+                }
+                else if (!medicines.Any())
+                {
+                    <p>No medicines found.</p>
+                }
+                else
+                {
+                    <div class="table-responsive">
+                        <table class="table table-hover">
+                            <thead>
+                                <tr>
+                                    <th>Name</th>
+                                    <th>Category</th>
+                                    <th>Supplier</th>
+                                    <th class="text-end">Price</th>
+                                    <th class="text-end">Stock</th>
+                                    <th>Status</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                @foreach (var medicine in medicines)
+                                {
+                                    <tr>
+                                        <td><strong>@medicine.Name</strong></td>
+                                        <td>@medicine.Category?.Name</td>
+                                        <td>@medicine.Supplier?.Name</td>
+                                        <td class="text-end">@medicine.BasePrice.ToString("C")</td>
+                                        <td class="text-end">@medicine.TotalStock</td>
+                                        <td>
+                                            @if (medicine.IsActive)
+                                            {
+                                                <span class="badge bg-success">Active</span>
+                                            }
+                                            else
+                                            {
+                                                <span class="badge bg-danger">Inactive</span>
+                                            }
+                                        </td>
+                                    </tr>
+                                }
+                            </tbody>
+                        </table>
+                    </div>
+                }
+            </div>
+        </div>
+    </div>
+</div>
+
+@code {
+    private CreateMedicineCommand command = new();
+    private List<Medicine>? medicines;
+
+    private int? selectedCategoryId
+    {
+        get => command.CategoryId > 0 ? command.CategoryId : null;
+        set => command.CategoryId = value ?? 0;
+    }
+
+    private int? selectedSupplierId
+    {
+        get => command.SupplierId > 0 ? command.SupplierId : null;
+        set => command.SupplierId = value ?? 0;
+    }
+
+    protected override async Task OnInitializedAsync()
+    {
+        await LoadMedicines();
+    }
+
+    private async Task LoadMedicines()
+    {
+        try
+        {
+            medicines = await Mediator.Send(new GetMedicinesQuery());
+        }
+        catch (Exception ex)
+        {
+            Logger.LogError(ex, "Error loading medicines.");
+        }
+    }
+
+    private async Task HandleValidSubmit()
+    {
+        try
+        {
+            await Mediator.Send(command);
+            command = new();
+            await LoadMedicines();
+        }
+        catch (Exception ex)
+        {
+            Logger.LogError(ex, "Error creating medicine {Name}.", command.Name);
+        }
+    }
+}

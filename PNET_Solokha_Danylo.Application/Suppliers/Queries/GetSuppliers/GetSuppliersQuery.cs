@@ -7,10 +7,11 @@ namespace PNET_Solokha_Danylo.Application.Suppliers.Queries.GetSuppliers;
 
 public record GetSuppliersQuery : IRequest<List<Supplier>>;
 
-public class GetSuppliersQueryHandler(IApplicationDbContext context) : IRequestHandler<GetSuppliersQuery, List<Supplier>>
+public class GetSuppliersQueryHandler(IApplicationDbContextFactory contextFactory) : IRequestHandler<GetSuppliersQuery, List<Supplier>>
 {
     public async Task<List<Supplier>> Handle(GetSuppliersQuery request, CancellationToken cancellationToken)
     {
+        using var context = contextFactory.CreateDbContext();
         return await context.Suppliers
             .OrderBy(s => s.Name)
             .ToListAsync(cancellationToken);

@@ -8,6 +8,7 @@
     <main>
         <div class="top-row px-4">
             <a href="https://learn.microsoft.com/aspnet/core/" target="_blank">About</a>
+            <button class="btn btn-outline-danger btn-sm ms-2" @onclick="TriggerError">💥 Test ErrorBoundary</button>
         </div>
 
         <article class="content px-4">
@@ -16,8 +17,22 @@
     </main>
 </div>
 
+@if (_throw)
+{
+    throw new InvalidOperationException("This is a test error from ErrorBoundary!");
+}
+
 <div id="blazor-error-ui" data-nosnippet>
     An unhandled error has occurred.
     <a href="." class="reload">Reload</a>
     <span class="dismiss">🗙</span>
 </div>
+
+@code {
+    bool _throw;
+
+    void TriggerError()
+    {
+        _throw = true;
+    }
+}

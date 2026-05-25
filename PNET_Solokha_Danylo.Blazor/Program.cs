@@ -1,9 +1,7 @@
 using Microsoft.AspNetCore.DataProtection;
-using Microsoft.EntityFrameworkCore;
 using PNET_Solokha_Danylo.Blazor.Components;
 using PNET_Solokha_Danylo.Infrastructure;
 using PNET_Solokha_Danylo.Application;
-using PNET_Solokha_Danylo.Infrastructure.Data;
 using Serilog;
 using Serilog.Events;
 using Serilog.Sinks.Grafana.Loki;
@@ -57,15 +55,8 @@ using (var scope = app.Services.CreateScope())
     var services = scope.ServiceProvider;
     try
     {
-        var context = services.GetRequiredService<PNET_Solokha_Danylo.Infrastructure.Data.ApplicationDbContext>();
-        var strategy = context.Database.CreateExecutionStrategy();
-        strategy.Execute(() =>
-        {
-            if (context.Database.GetPendingMigrations().Any())
-            {
-                context.Database.Migrate();
-            }
-        });
+        var initializer = services.GetRequiredService<PNET_Solokha_Danylo.Infrastructure.Data.DatabaseInitializer>();
+        await initializer.InitializeAsync();
     }
     catch (Exception ex)
     {
@@ -93,4 +84,15 @@ app.MapStaticAssets();
 app.MapRazorComponents<App>()
     .AddInteractiveServerRenderMode();
 
-app.Run();
+try
+{
+    app.Run();
+}
+catch (Exception ex)
+{
+    Log.Fatal(ex, "Application terminated unexpectedly");
+}
+finally
+{
+    Log.CloseAndFlush();
+}

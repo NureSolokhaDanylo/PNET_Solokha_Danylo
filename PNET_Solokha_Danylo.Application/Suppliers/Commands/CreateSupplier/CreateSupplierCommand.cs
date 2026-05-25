@@ -27,7 +27,7 @@ public class CreateSupplierCommandValidator : AbstractValidator<CreateSupplierCo
     }
 }
 
-public class CreateSupplierCommandHandler(IApplicationDbContext context, ILogger<CreateSupplierCommandHandler> logger) : IRequestHandler<CreateSupplierCommand, Unit>
+public class CreateSupplierCommandHandler(IApplicationDbContextFactory contextFactory, ILogger<CreateSupplierCommandHandler> logger) : IRequestHandler<CreateSupplierCommand, Unit>
 {
     public async Task<Unit> Handle(CreateSupplierCommand request, CancellationToken cancellationToken)
     {
@@ -35,6 +35,7 @@ public class CreateSupplierCommandHandler(IApplicationDbContext context, ILogger
         
         try
         {
+            using var context = contextFactory.CreateDbContext();
             // Using the stored procedure as requested
             await context.InsertSupplierAsync(request.Name, request.Country, request.Notes);
             logger.LogInformation("Successfully inserted supplier {Name} via stored procedure", request.Name);

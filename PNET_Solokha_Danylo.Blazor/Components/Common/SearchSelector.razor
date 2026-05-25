@@ -1,0 +1,146 @@
+@typeparam TItem
+
+<div class="search-selector dropdown" @onfocusout="HandleFocusOut">
+    <div class="input-group">
+        <input type="text" 
+               class="form-control" 
+               placeholder="@Placeholder" 
+               @bind="SearchText" 
+               @oninput="HandleInput" 
+               @onfocus="HandleFocus" />
+        @if (SelectedItem != null)
+        {
+            <button class="btn btn-outline-secondary" type="button" @onclick="ClearSelection">
+                <i class="bi bi-x"></i> &times;
+            </button>
+        }
+    </div>
+
+    @if (showDropdown && filteredItems != null && filteredItems.Any())
+    {
+        <ul class="dropdown-menu show w-100" style="max-height: 300px; overflow-y: auto;">
+            @foreach (var item in filteredItems)
+            {
+                <li>
+                    <button type="button" class="dropdown-item" @onclick="() => SelectItem(item)">
+                        @ItemTemplate(item)
+                    </button>
+                </li>
+            }
+        </ul>
+    }
+    else if (showDropdown && isSearching && (filteredItems == null || !filteredItems.Any()))
+    {
+        <ul class="dropdown-menu show w-100">
+            <li><span class="dropdown-item disabled">No results found</span></li>
+        </ul>
+    }
+</div>
+
+@code {
+    [Parameter] public IEnumerable<TItem>? Items { get; set; }
+    [Parameter] public Func<TItem, string> SearchProperty { get; set; } = default!;
+    [Parameter] public RenderFragment<TItem> ItemTemplate { get; set; } = default!;
+    [Parameter] public string Placeholder { get; set; } = "Search...";
+    [Parameter] public TItem? SelectedItem { get; set; }
+    [Parameter] public EventCallback<TItem?> SelectedItemChanged { get; set; }
+    [Parameter] public EventCallback<TItem?> OnItemSelected { get; set; }
+
+    private string searchText = string.Empty;
+    private string SearchText
+    {
+        get => searchText;
+        set
+        {
+            if (searchText != value)
+            {
+                searchText = value;
+            }
+        }
+    }
+
+    private bool showDropdown;
+    private bool isSearching;
+    private List<TItem>? filteredItems;
+
+    protected override void OnParametersSet()
+    {
+        if (SelectedItem != null)
+        {
+            searchText = SearchProperty(SelectedItem);
+        }
+        else if (!isSearching)
+        {
+            searchText = string.Empty;
+        }
+    }
+
+    private void HandleInput(ChangeEventArgs e)
+    {
+        searchText = e.Value?.ToString() ?? string.Empty;
+        isSearching = !string.IsNullOrWhiteSpace(searchText);
+        UpdateFilter();
+        showDropdown = true;
+    }
+
+    private void HandleFocus()
+    {
+        UpdateFilter();
+        showDropdown = true;
+    }
+
+    private async Task HandleFocusOut()
+    {
+        // Delay to allow @onclick to fire on the dropdown item
+        await Task.Delay(200);
+        showDropdown = false;
+        
+        if (SelectedItem != null)
+        {
+            searchText = SearchProperty(SelectedItem);
+        }
+        else
+        {
+            searchText = string.Empty;
+        }
+    }
+
+    private void UpdateFilter()
+    {
+        if (Items == null) return;
+
+        if (string.IsNullOrWhiteSpace(searchText))
+        {
+            filteredItems = Items.Take(10).ToList();
+        }
+        else
+        {
+            filteredItems = Items
+                .Where(i => SearchProperty(i).Contains(searchText, StringComparison.OrdinalIgnoreCase))
+                .Take(10)
+                .ToList();
+        }
+    }
+
+    private async Task SelectItem(TItem item)
+    {
+        SelectedItem = item;
+        searchText = SearchProperty(item);
+        showDropdown = false;
+        isSearching = false;
+
+        await SelectedItemChanged.InvokeAsync(SelectedItem);
+        await OnItemSelected.InvokeAsync(SelectedItem);
+    }
+
+    private async Task ClearSelection()
+    {
+        SelectedItem = default;
+        searchText = string.Empty;
+        showDropdown = false;
+        isSearching = false;
+
+        await SelectedItemChanged.InvokeAsync(SelectedItem);
+        await OnItemSelected.InvokeAsync(SelectedItem);
+    }
+}

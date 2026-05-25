@@ -26,7 +26,7 @@ public class CreateCategoryCommandValidator : AbstractValidator<CreateCategoryCo
     }
 }
 
-public class CreateCategoryCommandHandler(IApplicationDbContext context, ILogger<CreateCategoryCommandHandler> logger) : IRequestHandler<CreateCategoryCommand, int>
+public class CreateCategoryCommandHandler(IApplicationDbContextFactory contextFactory, ILogger<CreateCategoryCommandHandler> logger) : IRequestHandler<CreateCategoryCommand, int>
 {
     public async Task<int> Handle(CreateCategoryCommand request, CancellationToken cancellationToken)
     {
@@ -34,6 +34,7 @@ public class CreateCategoryCommandHandler(IApplicationDbContext context, ILogger
         
         try
         {
+            using var context = contextFactory.CreateDbContext();
             var entity = new Category(request.Name, request.Description);
 
             context.Categories.Add(entity);

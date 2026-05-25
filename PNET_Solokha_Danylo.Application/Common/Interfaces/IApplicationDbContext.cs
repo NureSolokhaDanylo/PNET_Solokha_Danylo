@@ -3,7 +3,7 @@ using PNET_Solokha_Danylo.Domain.Entities;
 
 namespace PNET_Solokha_Danylo.Application.Common.Interfaces;
 
-public interface IApplicationDbContext
+public interface IApplicationDbContext : IDisposable
 {
     DbSet<Category> Categories { get; }
     DbSet<Supplier> Suppliers { get; }

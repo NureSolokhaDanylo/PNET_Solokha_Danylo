@@ -1,0 +1,74 @@
+@using MediatR
+@using PNET_Solokha_Danylo.Application.Suppliers.Queries.GetSuppliers
+@using PNET_Solokha_Danylo.Domain.Entities
+@using PNET_Solokha_Danylo.Blazor.Components.Common
+@inject IMediator Mediator
+
+<SearchSelector TItem="Supplier"
+                Items="suppliers"
+                SearchProperty="@(s => s.Name)"
+                SelectedItem="selectedSupplier"
+                SelectedItemChanged="HandleSelectedItemChanged"
+                Placeholder="Search supplier..."
+                OnItemSelected="HandleItemSelected">
+    <ItemTemplate Context="supplier">
+        <div class="d-flex justify-content-between">
+            <div>
+                <strong>@supplier.Name</strong><br/>
+                <small class="text-muted">@supplier.Country</small>
+            </div>
+            @if (!string.IsNullOrEmpty(supplier.Notes))
+            {
+                <small class="text-muted text-truncate" style="max-width: 150px;">@supplier.Notes</small>
+            }
+        </div>
+    </ItemTemplate>
+</SearchSelector>
+
+@code {
+    [Parameter] public int? Value { get; set; }
+    [Parameter] public EventCallback<int?> ValueChanged { get; set; }
+    [Parameter] public EventCallback<Supplier?> OnSupplierSelected { get; set; }
+
+    private List<Supplier>? suppliers;
+    private Supplier? selectedSupplier;
+
+    protected override async Task OnInitializedAsync()
+    {
+        suppliers = await Mediator.Send(new GetSuppliersQuery());
+        UpdateSelectedSupplier();
+    }
+
+    protected override void OnParametersSet()
+    {
+        UpdateSelectedSupplier();
+    }
+
+    private void UpdateSelectedSupplier()
+    {
+        if (suppliers != null && Value.HasValue)
+        {
+            selectedSupplier = suppliers.FirstOrDefault(s => s.SupplierId == Value.Value);
+        }
+        else
+        {
+            selectedSupplier = null;
+        }
+    }
+
+    private async Task HandleSelectedItemChanged(Supplier? supplier)
+    {
+        selectedSupplier = supplier;
+        var newValue = supplier?.SupplierId;
+        if (Value != newValue)
+        {
+            Value = newValue;
+            await ValueChanged.InvokeAsync(Value);
+        }
+    }
+
+    private async Task HandleItemSelected(Supplier? supplier)
+    {
+        await OnSupplierSelected.InvokeAsync(supplier);
+    }
+}
