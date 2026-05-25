@@ -24,10 +24,12 @@ public class MedicineSaleDto
 {
     public int SaleId { get; set; }
     public int Quantity { get; set; }
+    public decimal BasePrice { get; set; }
     public decimal SoldPrice { get; set; }
     public DateTime SaleDate { get; set; }
     public decimal Discount { get; set; }
-    public decimal TotalPrice => Quantity * SoldPrice;
+    /// <summary>Final paid amount: (SoldPrice × Qty) − Discount.</summary>
+    public decimal TotalPrice => (Quantity * SoldPrice) - Discount;
 }
 
 public class MedicinePriceChangeDto
@@ -96,6 +98,7 @@ public class GetMedicineDetailsQueryHandler(
         {
             SaleId = s.SaleId,
             Quantity = s.Quantity,
+            BasePrice = medicine.BasePrice,
             SoldPrice = s.SoldPrice,
             SaleDate = s.SaleDate,
             Discount = s.Discount

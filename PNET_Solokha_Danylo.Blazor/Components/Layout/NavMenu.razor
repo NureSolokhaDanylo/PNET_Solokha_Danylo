@@ -1,10 +1,9 @@
 @implements IDisposable
-
 @inject NavigationManager NavigationManager
 
 <div class="top-row ps-3 navbar navbar-dark">
-    <div class="container-fluid">
-        <a class="navbar-brand" href="">PNET_Solokha_Danylo.Blazor</a>
+    <div class="container-fluid px-0">
+        <a class="navbar-brand" href="">PharmaStock</a>
     </div>
 </div>
 
@@ -12,6 +11,9 @@
 
 <div class="nav-scrollable" onclick="document.querySelector('.navbar-toggler').click()">
     <nav class="nav flex-column">
+
+        <div class="nav-section-label">Catalog</div>
+
         <div class="nav-item px-3">
             <NavLink class="nav-link" href="categories">
                 <span class="bi bi-tags-fill" aria-hidden="true"></span> Categories
@@ -29,6 +31,8 @@
                 <span class="bi bi-capsule" aria-hidden="true"></span> Medicines
             </NavLink>
         </div>
+
+        <div class="nav-section-label">Operations</div>
 
         <div class="nav-item px-3">
             <NavLink class="nav-link" href="inventory">
@@ -48,11 +52,14 @@
             </NavLink>
         </div>
 
+        <div class="nav-section-label">System</div>
+
         <div class="nav-item px-3">
             <NavLink class="nav-link" href="system-audit">
                 <span class="bi bi-shield-lock" aria-hidden="true"></span> System Audit
             </NavLink>
         </div>
+
     </nav>
 </div>
 
@@ -76,4 +83,3 @@
         NavigationManager.LocationChanged -= OnLocationChanged;
     }
 }
-

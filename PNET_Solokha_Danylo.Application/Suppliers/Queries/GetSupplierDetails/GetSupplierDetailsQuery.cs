@@ -32,6 +32,7 @@ public class SupplierDetailsDto
     public int TotalMedicines { get; set; }
     public int TotalStock { get; set; }
     public decimal SupplierStockValue { get; set; }
+    public decimal SupplierStockValueFromFunc { get; set; }
     
     public string? TopMedicineName { get; set; }
     public decimal TopMedicineRevenue { get; set; }
@@ -83,6 +84,12 @@ public class GetSupplierDetailsQueryHandler(
             .Where(i => i.Medicine.SupplierId == request.SupplierId)
             .SumAsync(i => (decimal?)i.Quantity * i.Medicine.BasePrice, cancellationToken) ?? 0;
             
+        // Supplier Stock Value from Database Function
+        var supplierStockValueFromFunc = await context.GetSupplierStockValue()
+            .Where(s => s.SupplierId == request.SupplierId)
+            .Select(s => s.TotalValue)
+            .FirstOrDefaultAsync(cancellationToken);
+            
         // Top Medicine by Revenue
         var topMedicineInfo = await context.Sales
             .Where(s => s.Medicine.SupplierId == request.SupplierId)
@@ -105,6 +112,7 @@ public class GetSupplierDetailsQueryHandler(
             TotalMedicines = totalMedicines,
             TotalStock = totalStock,
             SupplierStockValue = supplierStockValue,
+            SupplierStockValueFromFunc = supplierStockValueFromFunc,
             TopMedicineName = topMedicineInfo?.Name,
             TopMedicineRevenue = topMedicineInfo?.Revenue ?? 0,
             Medicines = medicineDtos

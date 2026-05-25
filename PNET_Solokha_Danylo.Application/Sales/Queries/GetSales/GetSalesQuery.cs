@@ -16,6 +16,7 @@ public class SaleDto
     public int MedicineId { get; set; }
     public string MedicineName { get; set; } = string.Empty;
     public int Quantity { get; set; }
+    public decimal BasePrice { get; set; }
     public decimal SoldPrice { get; set; }
     public DateTime SaleDate { get; set; }
     public decimal Discount { get; set; }
@@ -56,6 +57,7 @@ public class GetSalesQueryHandler(
                                 MedicineId = s.MedicineId,
                                 MedicineName = med != null ? med.Name : "Unknown",
                                 Quantity = s.Quantity,
+                                BasePrice = med != null ? med.BasePrice : 0,
                                 SoldPrice = s.SoldPrice,
                                 SaleDate = s.SaleDate,
                                 Discount = s.Discount,

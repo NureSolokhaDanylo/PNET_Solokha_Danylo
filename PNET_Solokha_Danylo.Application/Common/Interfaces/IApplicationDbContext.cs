@@ -15,6 +15,13 @@ public interface IApplicationDbContext : IDisposable
 
     Task<int> SaveChangesAsync(CancellationToken cancellationToken);
     
+    // Table-Valued Function
+    IQueryable<SupplierStockValue> GetSupplierStockValue();
+
+    // Scalar Function
+    int CountExpensiveMedicines(string country);
+    Task<int> GetExpensiveMedicinesCountAsync(string country, CancellationToken cancellationToken);
+    
     // Stored Procedures
     Task InsertSupplierAsync(string name, string country, string? notes = null);
     Task ArchiveSmallSalesByCategoryAsync(int categoryId, int k);

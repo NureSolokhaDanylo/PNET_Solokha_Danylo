@@ -1,0 +1,102 @@
+@using MediatR
+@using PNET_Solokha_Danylo.Application.Inventories.Commands.CreateInventory
+@using PNET_Solokha_Danylo.Blazor.Components.Medicines
+@inject IMediator Mediator
+@inject ILogger<AddInventoryForm> Logger
+
+<div class="card border-0 shadow-sm rounded-4">
+    <div class="card-header bg-white border-0 pt-4 px-4 pb-2">
+        <h5 class="fw-bold mb-0 text-dark"><i class="bi bi-plus-circle text-primary me-2"></i>Add Inventory Item</h5>
+    </div>
+    <div class="card-body px-4 pb-4">
+        @if (showSuccessAlert)
+        {
+            <div class="alert alert-success alert-dismissible fade show rounded-3" role="alert">
+                <i class="bi bi-check-circle-fill me-2"></i> Inventory batch added successfully!
+                <button type="button" class="btn-close" @onclick="() => showSuccessAlert = false" aria-label="Close"></button>
+            </div>
+        }
+
+        @if (!string.IsNullOrEmpty(errorMessage))
+        {
+            <div class="alert alert-danger alert-dismissible fade show rounded-3" role="alert">
+                <i class="bi bi-exclamation-triangle-fill me-2"></i> @errorMessage
+                <button type="button" class="btn-close" @onclick="() => errorMessage = null" aria-label="Close"></button>
+            </div>
+        }
+
+        <EditForm Model="command" OnValidSubmit="HandleValidSubmit" FormName="AddInventoryForm">
+            <FluentValidationValidator />
+
+            <div class="mb-3">
+                <label class="form-label text-secondary small fw-medium">Medicine</label>
+                <MedicineSelector @bind-Value="selectedMedicineId" />
+                <ValidationMessage For="@(() => command.MedicineId)" class="text-danger small mt-1" />
+            </div>
+
+            <div class="mb-3">
+                <label for="batchNumber" class="form-label text-secondary small fw-medium">Batch Number</label>
+                <InputText id="batchNumber" @bind-Value="command.BatchNumber" class="form-control rounded-3" placeholder="e.g. BT-99214" />
+                <ValidationMessage For="@(() => command.BatchNumber)" class="text-danger small mt-1" />
+            </div>
+
+            <div class="mb-3">
+                <label for="quantity" class="form-label text-secondary small fw-medium">Quantity</label>
+                <InputNumber id="quantity" @bind-Value="command.Quantity" class="form-control rounded-3" TValue="int" />
+                <ValidationMessage For="@(() => command.Quantity)" class="text-danger small mt-1" />
+            </div>
+
+            <div class="mb-3">
+                <label for="expiryDate" class="form-label text-secondary small fw-medium">Expiry Date</label>
+                <InputDate id="expiryDate" @bind-Value="command.ExpiryDate" class="form-control rounded-3" TValue="DateTime" />
+                <ValidationMessage For="@(() => command.ExpiryDate)" class="text-danger small mt-1" />
+            </div>
+
+            <div class="mb-3">
+                <label for="location" class="form-label text-secondary small fw-medium">Shelf / Storage Location</label>
+                <InputText id="location" @bind-Value="command.Location" class="form-control rounded-3" placeholder="e.g. Shelf A-3" />
+                <ValidationMessage For="@(() => command.Location)" class="text-danger small mt-1" />
+            </div>
+
+            <button type="submit" class="btn btn-primary w-100 rounded-3 py-2 mt-2">
+                <i class="bi bi-save me-1"></i> Register Delivery
+            </button>
+        </EditForm>
+    </div>
+</div>
+
+@code {
+    [Parameter] public EventCallback OnInventoryAdded { get; set; }
+
+    private CreateInventoryCommand command = new();
+    private bool showSuccessAlert = false;
+    private string? errorMessage;
+
+    private int? selectedMedicineId
+    {
+        get => command.MedicineId > 0 ? command.MedicineId : null;
+        set => command.MedicineId = value ?? 0;
+    }
+
+    private async Task HandleValidSubmit()
+    {
+        showSuccessAlert = false;
+        errorMessage = null;
+        Logger.LogInformation("Submitting CreateInventoryCommand for MedicineId {MedicineId}.", command.MedicineId);
+
+        try
+        {
+            await Mediator.Send(command);
+            Logger.LogInformation("Inventory batch added successfully.");
+            
+            command = new();
+            showSuccessAlert = true;
+            await OnInventoryAdded.InvokeAsync();
+        }
+        catch (Exception ex)
+        {
+            Logger.LogError(ex, "Error creating inventory item.");
+            errorMessage = ex.Message;
+        }
+    }
+}

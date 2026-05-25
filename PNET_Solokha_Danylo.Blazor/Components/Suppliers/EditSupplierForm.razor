@@ -1,0 +1,100 @@
+@using MediatR
+@using PNET_Solokha_Danylo.Application.Suppliers.Commands.UpdateSupplier
+
+<div class="card border-0 shadow-sm rounded-4 mb-4">
+    <div class="card-header bg-white border-0 pt-4 px-4 pb-2">
+        <h5 class="fw-bold mb-0 text-dark"><i class="bi bi-pencil-fill text-primary me-2"></i>Edit Supplier</h5>
+    </div>
+    <div class="card-body px-4 pb-4">
+        @if (!string.IsNullOrEmpty(errorMessage))
+        {
+            <div class="alert alert-danger alert-dismissible fade show rounded-3 mb-3" role="alert">
+                <i class="bi bi-exclamation-triangle-fill me-2"></i> @errorMessage
+                <button type="button" class="btn-close" @onclick="() => errorMessage = null" aria-label="Close"></button>
+            </div>
+        }
+
+        <EditForm Model="command" OnValidSubmit="HandleSubmit" FormName="EditSupplierFormInline">
+            <FluentValidationValidator />
+            <div class="row g-3">
+                <div class="col-md-6">
+                    <label class="form-label text-secondary small fw-medium">Name</label>
+                    <InputText @bind-Value="command.Name" class="form-control rounded-3" placeholder="e.g. Acme Corp" />
+                    <ValidationMessage For="@(() => command.Name)" class="text-danger small mt-1" />
+                </div>
+                <div class="col-md-6">
+                    <label class="form-label text-secondary small fw-medium">Country</label>
+                    <InputText @bind-Value="command.Country" class="form-control rounded-3" placeholder="e.g. Germany" />
+                    <ValidationMessage For="@(() => command.Country)" class="text-danger small mt-1" />
+                </div>
+                <div class="col-12">
+                    <label class="form-label text-secondary small fw-medium">Notes</label>
+                    <InputTextArea @bind-Value="command.Notes" class="form-control rounded-3" rows="3" placeholder="General info, contacts, or delivery conditions..." />
+                    <ValidationMessage For="@(() => command.Notes)" class="text-danger small mt-1" />
+                </div>
+            </div>
+            <div class="d-flex gap-2 mt-4">
+                <button type="submit" class="btn btn-primary rounded-3 px-4" disabled="@isSaving">
+                    @if (isSaving)
+                    {
+                        <span class="spinner-border spinner-border-sm me-1" role="status"></span>
+                    }
+                    else
+                    {
+                        <i class="bi bi-save me-1"></i>
+                    }
+                    Save Changes
+                </button>
+                <button type="button" class="btn btn-outline-secondary rounded-3" @onclick="OnCancel" disabled="@isSaving">
+                    <i class="bi bi-x-lg me-1"></i> Cancel
+                </button>
+            </div>
+        </EditForm>
+    </div>
+</div>
+
+@code {
+    [Parameter] public int SupplierId { get; set; }
+    [Parameter] public string InitialName { get; set; } = string.Empty;
+    [Parameter] public string InitialCountry { get; set; } = string.Empty;
+    [Parameter] public string? InitialNotes { get; set; }
+    [Parameter] public EventCallback OnSaved { get; set; }
+    [Parameter] public EventCallback OnCancel { get; set; }
+
+    [Inject] private IMediator Mediator { get; set; } = default!;
+    [Inject] private ILogger<EditSupplierForm> Logger { get; set; } = default!;
+
+    private UpdateSupplierCommand command = new();
+    private bool isSaving = false;
+    private string? errorMessage;
+
+    protected override void OnParametersSet()
+    {
+        command.SupplierId = SupplierId;
+        command.Name = InitialName;
+        command.Country = InitialCountry;
+        command.Notes = InitialNotes;
+    }
+
+    private async Task HandleSubmit()
+    {
+        isSaving = true;
+        errorMessage = null;
+
+        try
+        {
+            await Mediator.Send(command);
+            Logger.LogInformation("Supplier {SupplierId} updated successfully via component.", SupplierId);
+            await OnSaved.InvokeAsync();
+        }
+        catch (Exception ex)
+        {
+            Logger.LogError(ex, "Error updating supplier {SupplierId} in component.", SupplierId);
+            errorMessage = ex.Message;
+        }
+        finally
+        {
+            isSaving = false;
+        }
+    }
+}

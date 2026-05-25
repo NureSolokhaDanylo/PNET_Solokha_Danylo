@@ -1,6 +1,4 @@
-using Microsoft.EntityFrameworkCore;
-
-namespace PNET_Solokha_Danylo.Infrastructure.Data;
+namespace PNET_Solokha_Danylo.Domain.Entities;
 
 public class SupplierStockValue
 {

@@ -79,7 +79,7 @@
                 <div class="card border-0 shadow-sm rounded-4 stat-card bg-white p-3 h-100">
                     <div class="d-flex align-items-center justify-content-between mb-3">
                         <span class="text-secondary small fw-medium">Sold Price per Unit</span>
-                        <div class="icon-shape bg-info-subtle text-info rounded-3 px-2 py-1"><i class="bi bi-currency-dollar fs-5"></i></div>
+                        <div class="icon-shape bg-info-subtle text-info rounded-3 px-2 py-1"><i class="bi bi-cash-coin fs-5"></i></div>
                     </div>
                     <h3 class="fw-bold mb-1 text-dark font-monospace">@details.SoldPrice.ToString("C")</h3>
                     <p class="text-muted extra-small mb-0">Actual price at checkout</p>
@@ -108,7 +108,7 @@
                     @if (details.Savings > 0)
                     {
                         <h3 class="fw-bold mb-1 text-danger font-monospace">@details.Savings.ToString("C")</h3>
-                        <p class="text-muted extra-small mb-0">Via -$@details.Discount.ToString("F2") per-unit discount</p>
+                        <p class="text-muted extra-small mb-0">Flat discount applied to the whole order</p>
                     }
                     else
                     {
@@ -182,14 +182,14 @@
                                     }
                                     else
                                     {
-                                        <span>$0.00</span>
+                                        <span>@(0m.ToString("C"))</span>
                                     }
                                 </td>
                             </tr>
                             <tr class="border-top border-light-subtle">
                                 <td colspan="4" class="border-0"></td>
                                 <td class="text-end fw-bold text-dark ps-0 py-3 border-0 fs-5">Invoice Total:</td>
-                                <td class="text-end fw-bold text-success font-monospace pe-3 py-3 border-0 fs-5">@details.TotalRevenue.ToString("C")</td>
+                                <td class="text-end fw-bold text-success font-monospace pe-3 py-3 border-0 fs-5">@details.FinalTotal.ToString("C")</td>
                             </tr>
                         </tbody>
                     </table>
@@ -199,28 +199,7 @@
     }
 </div>
 
-<style>
-    .header-card {
-        background: linear-gradient(135deg, #00b4db 0%, #0083b0 100%);
-    }
-    .hover-link:hover {
-        color: #fff !important;
-        text-decoration: underline !important;
-    }
-    .fs-7 {
-        font-size: 0.8rem;
-    }
-    .extra-small {
-        font-size: 0.72rem;
-    }
-    .stat-card {
-        transition: transform 0.2s ease, box-shadow 0.2s ease;
-    }
-    .stat-card:hover {
-        transform: translateY(-3px);
-        box-shadow: 0 .5rem 1rem rgba(0,0,0,.08)!important;
-    }
-</style>
+
 
 @code {
     [Parameter]

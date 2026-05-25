@@ -157,41 +157,7 @@
                         </div>
 
                         <!-- Footer Pagination -->
-                        <div class="d-flex flex-column flex-md-row align-items-center justify-content-between p-4 bg-light border-top gap-3">
-                            <div class="text-secondary small fw-medium">
-                                Showing <span class="text-dark">@(categories.Any() ? skip + 1 : 0)</span> to <span class="text-dark">@(Math.Min(skip + take, totalCount))</span> of <span class="text-dark">@totalCount</span> entries
-                            </div>
-                            
-                            <div class="d-flex align-items-center gap-3">
-                                <div class="d-flex align-items-center gap-2">
-                                    <span class="small text-muted text-nowrap">Page size:</span>
-                                    <select class="form-select form-select-sm rounded-3" style="width: auto;" value="@take" @onchange="OnPageSizeChanged">
-                                        <option value="5">5</option>
-                                        <option value="10">10</option>
-                                        <option value="25">25</option>
-                                        <option value="50">50</option>
-                                    </select>
-                                </div>
-
-                                <nav aria-label="Pagination navigation">
-                                    <ul class="pagination pagination-sm mb-0 rounded-3">
-                                        <li class="page-item @(CanPrevPage ? "" : "disabled")">
-                                            <button class="page-item page-link rounded-start-3" @onclick="PrevPage" aria-label="Previous">
-                                                <i class="bi bi-chevron-left"></i> Prev
-                                            </button>
-                                        </li>
-                                        <li class="page-item active">
-                                            <span class="page-link px-3">@(CurrentPage)</span>
-                                        </li>
-                                        <li class="page-item @(CanNextPage ? "" : "disabled")">
-                                            <button class="page-item page-link rounded-end-3" @onclick="NextPage" aria-label="Next">
-                                                Next <i class="bi bi-chevron-right"></i>
-                                            </button>
-                                        </li>
-                                    </ul>
-                                </nav>
-                            </div>
-                        </div>
+                        <PaginationControl TotalCount="totalCount" Skip="skip" PageSize="take" OnPageChanged="HandlePageChanged" />
                     }
                 </div>
             </div>
@@ -199,24 +165,9 @@
     </div>
 </div>
 
-<style>
-    .text-gradient {
-        background: linear-gradient(135deg, #1e3c72 0%, #2a5298 100%);
-        -webkit-background-clip: text;
-        -webkit-text-fill-color: transparent;
-    }
-    
-    .filter-card {
-        background: rgba(255, 255, 255, 0.8);
-        backdrop-filter: blur(10px);
-        border: 1px solid rgba(220, 224, 230, 0.6);
-    }
 
-    .fs-7 {
-        font-size: 0.8rem;
-    }
-</style>
 
+@using PNET_Solokha_Danylo.Blazor.Components.Common
 @code {
     private CreateCategoryCommand command = new();
     private List<Category>? categories;
@@ -234,9 +185,7 @@
     private int skip = 0;
     private int take = 10;
 
-    private int CurrentPage => (skip / take) + 1;
-    private bool CanPrevPage => skip > 0;
-    private bool CanNextPage => (skip + take) < totalCount;
+
 
     protected override async Task OnInitializedAsync()
     {
@@ -264,8 +213,8 @@
             categories = result.Items;
             totalCount = result.TotalCount;
 
-            Logger.LogInformation("Fetched {Count} categories (Total {Total}) for page {Page}.",
-                categories?.Count ?? 0, totalCount, CurrentPage);
+            Logger.LogInformation("Fetched {Count} categories (Total {Total}).",
+                categories?.Count ?? 0, totalCount);
         }
         catch (Exception ex)
         {
@@ -328,31 +277,10 @@
         }
     }
 
-    private async Task PrevPage()
+    private async Task HandlePageChanged((int Skip, int Take) pageInfo)
     {
-        if (CanPrevPage)
-        {
-            skip = Math.Max(0, skip - take);
-            await FetchData(showSpinner: false);
-        }
-    }
-
-    private async Task NextPage()
-    {
-        if (CanNextPage)
-        {
-            skip += take;
-            await FetchData(showSpinner: false);
-        }
-    }
-
-    private async Task OnPageSizeChanged(ChangeEventArgs e)
-    {
-        if (int.TryParse(e.Value?.ToString(), out var newSize))
-        {
-            take = newSize;
-            skip = 0;
-            await FetchData(showSpinner: false);
-        }
+        skip = pageInfo.Skip;
+        take = pageInfo.Take;
+        await FetchData(showSpinner: false);
     }
 }

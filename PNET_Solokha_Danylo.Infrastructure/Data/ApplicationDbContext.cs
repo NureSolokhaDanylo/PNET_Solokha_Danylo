@@ -16,11 +16,17 @@ public class ApplicationDbContext(DbContextOptions<ApplicationDbContext> options
 
     // Table-Valued Function
     public IQueryable<SupplierStockValue> GetSupplierStockValue()
-        => FromExpression(() => GetSupplierStockValue());
+        => Set<SupplierStockValue>();
 
     // Scalar Function
     public int CountExpensiveMedicines(string country)
         => throw new NotSupportedException();
+
+    public async Task<int> GetExpensiveMedicinesCountAsync(string country, CancellationToken cancellationToken)
+    {
+        return await Database.SqlQuery<int>($"SELECT dbo.fn_CountExpensiveMedicines({country}) AS Value")
+            .FirstOrDefaultAsync(cancellationToken);
+    }
 
     // Stored Procedures
     public async Task InsertSupplierAsync(string name, string country, string? notes = null)

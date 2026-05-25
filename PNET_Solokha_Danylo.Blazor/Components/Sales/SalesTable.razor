@@ -1,0 +1,88 @@
+@using PNET_Solokha_Danylo.Application.Sales.Queries.GetSales
+@using PNET_Solokha_Danylo.Blazor.Components.Common
+
+<div class="card-body p-0">
+    @if (IsLoading)
+    {
+        <div class="d-flex flex-column align-items-center justify-content-center py-5">
+            <div class="spinner-border text-primary mb-3" role="status">
+                <span class="visually-hidden">Loading...</span>
+            </div>
+            <span class="text-secondary">Fetching sales...</span>
+        </div>
+    }
+    else if (Sales == null || !Sales.Any())
+    {
+        <div class="text-center py-5">
+            <div class="mb-3 text-muted">
+                <i class="bi bi-cart-x display-3"></i>
+            </div>
+            <h5 class="fw-semibold text-dark">No transaction records found</h5>
+            <p class="text-muted px-4">There are no sales registered matching your current filter criteria.</p>
+        </div>
+    }
+    else
+    {
+        <div class="table-responsive">
+            <table class="table table-hover align-middle mb-0">
+                <thead class="table-light">
+                    <tr>
+                        <th class="ps-4">ID</th>
+                        <th>Medicine</th>
+                        <th class="text-center">Qty</th>
+                        <th>Price per Unit</th>
+                        <th>Discount</th>
+                        <th>Revenue Total</th>
+                        <th class="pe-4">Date</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    @foreach (var s in Sales)
+                    {
+                        <tr>
+                            <td class="ps-4">
+                                <a href="/sales/@s.SaleId" class="badge bg-secondary-subtle text-secondary-emphasis font-monospace px-2 py-1 fs-7 text-decoration-none">#@s.SaleId</a>
+                            </td>
+                            <td>
+                                <a href="/medicines/@s.MedicineId" class="fw-bold text-primary text-decoration-none">@s.MedicineName</a>
+                            </td>
+                            <td class="text-center">
+                                <span class="badge bg-light text-dark font-monospace border px-2 py-1 fs-7">@s.Quantity</span>
+                            </td>
+                            <td>
+                                <span class="text-secondary small">@s.SoldPrice.ToString("C")</span>
+                            </td>
+                            <td>
+                                @if (s.Discount > 0)
+                                {
+                                    <span class="text-danger small"><i class="bi bi-tag-fill me-1"></i>-@s.Discount.ToString("C")</span>
+                                }
+                                else
+                                {
+                                    <span class="text-muted small">None</span>
+                                }
+                            </td>
+                            <td>
+                                <span class="fw-bold text-success">@s.TotalPrice.ToString("C")</span>
+                            </td>
+                            <td class="pe-4 text-secondary small">
+                                <span>@s.SaleDate.ToString("yyyy-MM-dd HH:mm")</span>
+                            </td>
+                        </tr>
+                    }
+                </tbody>
+            </table>
+        </div>
+
+        <PaginationControl TotalCount="TotalCount" Skip="Skip" PageSize="Take" OnPageChanged="OnPageChanged" />
+    }
+</div>
+
+@code {
+    [Parameter] public bool IsLoading { get; set; }
+    [Parameter] public List<SaleDto>? Sales { get; set; }
+    [Parameter] public int TotalCount { get; set; }
+    [Parameter] public int Skip { get; set; }
+    [Parameter] public int Take { get; set; }
+    [Parameter] public EventCallback<(int Skip, int Take)> OnPageChanged { get; set; }
+}

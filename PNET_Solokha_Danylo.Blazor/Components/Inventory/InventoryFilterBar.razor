@@ -1,0 +1,91 @@
+@using PNET_Solokha_Danylo.Blazor.Components.Medicines
+
+<div class="card border-0 shadow-sm mb-4 rounded-4 filter-card">
+    <div class="card-body p-4">
+        <h5 class="fw-semibold mb-3 d-flex align-items-center">
+            <i class="bi bi-funnel-fill text-primary me-2"></i> Filters & Search
+        </h5>
+        <div class="row g-3 align-items-end">
+            <div class="col-md-5">
+                <label class="form-label text-secondary small fw-medium">Search Batch / Shelf</label>
+                <div class="input-group">
+                    <span class="input-group-text bg-white border-end-0"><i class="bi bi-search text-muted"></i></span>
+                    <input type="text" class="form-control border-start-0 ps-0" placeholder="e.g. BT-99, Shelf B..." value="@SearchTerm" @oninput="HandleSearchInput" @onkeyup="OnSearchKeyUp" />
+                    @if (!string.IsNullOrEmpty(SearchTerm))
+                    {
+                        <button class="btn btn-outline-secondary" type="button" @onclick="ClearSearch">
+                            <i class="bi bi-x-lg"></i>
+                        </button>
+                    }
+                </div>
+            </div>
+
+            <div class="col-md-4">
+                <label class="form-label text-secondary small fw-medium">Filter by Medicine</label>
+                <MedicineSelector Value="FilterMedicineId" ValueChanged="HandleFilterMedicineChanged" />
+            </div>
+
+            <div class="col-md-3 d-flex gap-2">
+                <button class="btn btn-light w-50 rounded-3 text-secondary" @onclick="HandleReset">
+                    <i class="bi bi-arrow-counterclockwise"></i>
+                </button>
+                <button class="btn btn-primary w-50 rounded-3" @onclick="HandleApply">
+                    Search
+                </button>
+            </div>
+        </div>
+    </div>
+</div>
+
+@code {
+    [Parameter] public string? SearchTerm { get; set; }
+    [Parameter] public EventCallback<string?> SearchTermChanged { get; set; }
+
+    [Parameter] public int? FilterMedicineId { get; set; }
+    [Parameter] public EventCallback<int?> FilterMedicineIdChanged { get; set; }
+
+    [Parameter] public EventCallback OnFiltersApplied { get; set; }
+    [Parameter] public EventCallback OnFiltersReset { get; set; }
+
+    private async Task HandleSearchInput(ChangeEventArgs e)
+    {
+        SearchTerm = e.Value?.ToString();
+        await SearchTermChanged.InvokeAsync(SearchTerm);
+    }
+
+    private async Task OnSearchKeyUp(KeyboardEventArgs e)
+    {
+        if (e.Key == "Enter")
+        {
+            await OnFiltersApplied.InvokeAsync();
+        }
+    }
+
+    private async Task ClearSearch()
+    {
+        SearchTerm = null;
+        await SearchTermChanged.InvokeAsync(SearchTerm);
+        await OnFiltersApplied.InvokeAsync();
+    }
+
+    private async Task HandleFilterMedicineChanged(int? newValue)
+    {
+        FilterMedicineId = newValue;
+        await FilterMedicineIdChanged.InvokeAsync(FilterMedicineId);
+    }
+
+    private async Task HandleApply()
+    {
+        await OnFiltersApplied.InvokeAsync();
+    }
+
+    private async Task HandleReset()
+    {
+        SearchTerm = null;
+        FilterMedicineId = null;
+        await SearchTermChanged.InvokeAsync(SearchTerm);
+        await FilterMedicineIdChanged.InvokeAsync(FilterMedicineId);
+        
+        await OnFiltersReset.InvokeAsync();
+    }
+}

@@ -1,0 +1,25 @@
+.header-card {
+        background: linear-gradient(135deg, #0f2027 0%, #203a43 50%, #2c5364 100%);
+    }
+    .hover-link:hover {
+        color: #fff !important;
+        text-decoration: underline !important;
+    }
+    .fs-7 {
+        font-size: 0.8rem;
+    }
+    .extra-small {
+        font-size: 0.72rem;
+    }
+    .stat-card {
+        transition: transform 0.2s ease, box-shadow 0.2s ease;
+    }
+    .stat-card:hover {
+        transform: translateY(-3px);
+        box-shadow: 0 .5rem 1rem rgba(0,0,0,.08)!important;
+    }
+    .last-no-border:last-child {
+        border-bottom: 0 !important;
+        margin-bottom: 0 !important;
+        pb-0 !important;
+    }

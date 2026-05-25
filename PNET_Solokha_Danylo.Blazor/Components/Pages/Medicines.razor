@@ -1,7 +1,10 @@
 @page "/medicines"
 @rendermode InteractiveServer
-@using PNET_Solokha_Danylo.Blazor.Components.Categories
-@using PNET_Solokha_Danylo.Blazor.Components.Suppliers
+@using PNET_Solokha_Danylo.Application.Medicines.Queries.GetMedicines
+@using PNET_Solokha_Danylo.Application.Medicines.Queries.GetExpensiveMedicinesCount
+@using PNET_Solokha_Danylo.Application.Suppliers.Queries.GetSuppliers
+@using PNET_Solokha_Danylo.Domain.Entities
+@using PNET_Solokha_Danylo.Blazor.Components.Medicines
 @inject IMediator Mediator
 @inject ILogger<Medicines> Logger
 
@@ -9,7 +12,6 @@
 <PageTitle>Medicine Management</PageTitle>
 
 <div class="container-fluid py-4">
-    <!-- Header with Gradient Title -->
     <div class="d-flex align-items-center justify-content-between mb-4">
         <div>
             <h1 class="display-6 fw-bold text-gradient">Pharmaceutical Catalog</h1>
@@ -21,285 +23,84 @@
     </div>
 
     <div class="row g-4">
-        <!-- Add Medicine Form (Left) -->
         <div class="col-md-4">
-            <div class="card border-0 shadow-sm rounded-4">
+            <AddMedicineForm OnMedicineAdded="FetchDataWithReset" />
+
+            <!-- DB Function 1.3.3.1 Import Analytics Widget -->
+            <div class="card border-0 shadow-sm rounded-4 mt-4">
                 <div class="card-header bg-white border-0 pt-4 px-4 pb-2">
-                    <h5 class="fw-bold mb-0 text-dark"><i class="bi bi-plus-circle text-primary me-2"></i>Add New Medicine</h5>
+                    <h5 class="fw-bold mb-0 text-dark">
+                        <i class="bi bi-graph-up-arrow text-primary me-2"></i>Import Analytics
+                    </h5>
                 </div>
                 <div class="card-body px-4 pb-4">
-                    @if (showSuccessAlert)
+                    <p class="text-secondary small mb-4">Calculate how many medicines in stock are priced higher than the average cost of drugs from a specific supplier country.</p>
+                    
+                    @if (countries == null || !countries.Any())
                     {
-                        <div class="alert alert-success alert-dismissible fade show rounded-3" role="alert">
-                            <i class="bi bi-check-circle-fill me-2"></i> Medicine added successfully!
-                            <button type="button" class="btn-close" @onclick="() => showSuccessAlert = false" aria-label="Close"></button>
-                        </div>
-                    }
-
-                    @if (!string.IsNullOrEmpty(errorMessage))
-                    {
-                        <div class="alert alert-danger alert-dismissible fade show rounded-3" role="alert">
-                            <i class="bi bi-exclamation-triangle-fill me-2"></i> @errorMessage
-                            <button type="button" class="btn-close" @onclick="() => errorMessage = null" aria-label="Close"></button>
-                        </div>
-                    }
-
-                    <EditForm Model="command" OnValidSubmit="HandleValidSubmit" FormName="AddMedicineForm">
-                        <FluentValidationValidator />
-                        
-                        <div class="mb-3">
-                            <label for="name" class="form-label text-secondary small fw-medium">Medicine Name</label>
-                            <InputText id="name" @bind-Value="command.Name" class="form-control rounded-3" placeholder="e.g. Paracetamol" />
-                            <ValidationMessage For="@(() => command.Name)" class="text-danger small mt-1" />
-                        </div>
-
-                        <div class="mb-3">
-                            <label class="form-label text-secondary small fw-medium">Category</label>
-                            <CategorySelector @bind-Value="selectedCategoryId" />
-                            <ValidationMessage For="@(() => command.CategoryId)" class="text-danger small mt-1" />
-                        </div>
-
-                        <div class="mb-3">
-                            <label class="form-label text-secondary small fw-medium">Supplier</label>
-                            <SupplierSelector @bind-Value="selectedSupplierId" />
-                            <ValidationMessage For="@(() => command.SupplierId)" class="text-danger small mt-1" />
-                        </div>
-
-                        <div class="mb-3">
-                            <label for="basePrice" class="form-label text-secondary small fw-medium">Base Price ($)</label>
-                            <InputNumber id="basePrice" @bind-Value="command.BasePrice" class="form-control rounded-3" TValue="decimal" Step="0.01" />
-                            <ValidationMessage For="@(() => command.BasePrice)" class="text-danger small mt-1" />
-                        </div>
-
-                        <button type="submit" class="btn btn-primary w-100 rounded-3 py-2 mt-2">
-                            <i class="bi bi-save me-1"></i> Register Medicine
-                        </button>
-                    </EditForm>
-                </div>
-            </div>
-        </div>
-        
-        <!-- Medicines List (Right) -->
-        <div class="col-md-8">
-            <!-- Filter Bar Card -->
-            <div class="card border-0 shadow-sm mb-4 rounded-4 filter-card">
-                <div class="card-body p-4">
-                    <h5 class="fw-semibold mb-3 d-flex align-items-center">
-                        <i class="bi bi-funnel-fill text-primary me-2"></i> Filters & Search
-                    </h5>
-                    <div class="row g-3">
-                        <!-- Search Name / Supplier / Category -->
-                        <div class="col-md-6">
-                            <label class="form-label text-secondary small fw-medium">Search Keyword</label>
-                            <div class="input-group">
-                                <span class="input-group-text bg-white border-end-0"><i class="bi bi-search text-muted"></i></span>
-                                <input type="text" class="form-control border-start-0 ps-0" placeholder="e.g. Paracetamol, Pfizer..." @bind="searchTerm" @bind:event="oninput" @onkeyup="OnSearchKeyUp" />
-                                @if (!string.IsNullOrEmpty(searchTerm))
-                                {
-                                    <button class="btn btn-outline-secondary" type="button" @onclick="ClearSearch">
-                                        <i class="bi bi-x-lg"></i>
-                                    </button>
-                                }
-                            </div>
-                        </div>
-
-                        <!-- Status Filter -->
-                        <div class="col-md-6">
-                            <label class="form-label text-secondary small fw-medium">Active Status</label>
-                            <select class="form-select rounded-3" @bind="filterIsActiveString">
-                                <option value="all">All Statuses</option>
-                                <option value="active">Active Only</option>
-                                <option value="inactive">Inactive Only</option>
-                            </select>
-                        </div>
-
-                        <!-- Category Selector Filter -->
-                        <div class="col-md-6">
-                            <label class="form-label text-secondary small fw-medium">Filter by Category</label>
-                            <CategorySelector @bind-Value="filterCategoryId" />
-                        </div>
-
-                        <!-- Supplier Selector Filter -->
-                        <div class="col-md-6">
-                            <label class="form-label text-secondary small fw-medium">Filter by Supplier</label>
-                            <SupplierSelector @bind-Value="filterSupplierId" />
-                        </div>
-
-                        <!-- Action Buttons -->
-                        <div class="col-12 d-flex justify-content-end gap-2 mt-2">
-                            <button class="btn btn-light rounded-3 px-4 text-secondary" @onclick="ResetFilters">
-                                <i class="bi bi-arrow-counterclockwise me-1"></i> Reset
-                            </button>
-                            <button class="btn btn-primary rounded-3 px-4" @onclick="ApplyFilters">
-                                <i class="bi bi-search me-1"></i> Search Catalog
-                            </button>
-                        </div>
-                    </div>
-                </div>
-            </div>
-
-            <!-- List Table Card -->
-            <div id="medicines-table-card" class="card border-0 shadow-sm rounded-4 overflow-hidden">
-                <div class="card-body p-0">
-                    @if (isLoading)
-                    {
-                        <div class="d-flex flex-column align-items-center justify-content-center py-5">
-                            <div class="spinner-border text-primary mb-3" role="status">
-                                <span class="visually-hidden">Loading...</span>
-                            </div>
-                            <span class="text-secondary">Fetching medicines...</span>
-                        </div>
-                    }
-                    else if (medicines == null || !medicines.Any())
-                    {
-                        <div class="text-center py-5">
-                            <div class="mb-3 text-muted">
-                                <i class="bi bi-capsule display-3"></i>
-                            </div>
-                            <h5 class="fw-semibold text-dark">No medicines found</h5>
-                            <p class="text-muted px-4">There are no medicines registered matching your current filters.</p>
+                        <div class="text-center py-3 text-muted small">
+                            <i class="bi bi-info-circle me-1"></i> No supplier countries available
                         </div>
                     }
                     else
                     {
-                        <div class="table-responsive">
-                            <table class="table table-hover align-middle mb-0">
-                                <thead class="table-light">
-                                    <tr>
-                                        <th class="ps-4">Name</th>
-                                        <th>Category</th>
-                                        <th>Supplier</th>
-                                        <th class="text-end">Base Price</th>
-                                        <th class="text-end">Total Stock</th>
-                                        <th class="text-center" style="width: 120px;">Status</th>
-                                    </tr>
-                                </thead>
-                                <tbody>
-                                    @foreach (var medicine in medicines)
-                                    {
-                                        <tr>
-                                            <td class="ps-4">
-                                                <div class="d-flex flex-column">
-                                                    <a href="/medicines/@medicine.MedicineId" class="fw-bold text-primary text-decoration-none">@medicine.Name</a>
-                                                    <span class="text-muted extra-small">ID: #@medicine.MedicineId</span>
-                                                </div>
-                                            </td>
-                                            <td>
-                                                @if (medicine.Category != null)
-                                                {
-                                                    <a href="/categories/@medicine.CategoryId" class="badge bg-info-subtle text-info-emphasis px-2 py-1 fs-7 text-decoration-none">
-                                                        @medicine.Category.Name
-                                                    </a>
-                                                }
-                                                else
-                                                {
-                                                    <span class="badge bg-info-subtle text-info-emphasis px-2 py-1 fs-7">General</span>
-                                                }
-                                            </td>
-                                            <td>
-                                                @if (medicine.Supplier != null)
-                                                {
-                                                    <a href="/suppliers/@medicine.SupplierId" class="text-primary small text-decoration-none"><i class="bi bi-building me-1"></i>@medicine.Supplier.Name</a>
-                                                }
-                                                else
-                                                {
-                                                    <span class="text-secondary small"><i class="bi bi-building me-1"></i>Unknown</span>
-                                                }
-                                            </td>
-                                            <td class="text-end">
-                                                <span class="fw-semibold text-dark">@medicine.BasePrice.ToString("C")</span>
-                                            </td>
-                                            <td class="text-end">
-                                                <span class="badge bg-light text-dark font-monospace border px-2 py-1">@medicine.TotalStock</span>
-                                            </td>
-                                            <td class="text-center">
-                                                @if (medicine.IsActive)
-                                                {
-                                                    <span class="badge bg-success px-2 py-1 rounded-pill">Active</span>
-                                                }
-                                                else
-                                                {
-                                                    <span class="badge bg-danger px-2 py-1 rounded-pill">Inactive</span>
-                                                }
-                                            </td>
-                                        </tr>
-                                    }
-                                </tbody>
-                            </table>
+                        <div class="mb-4">
+                            <label class="form-label text-secondary small fw-semibold mb-2">Select Supplier Country</label>
+                            <select class="form-select rounded-3 text-dark border" 
+                                    value="@selectedCountry" 
+                                    @onchange="OnCountryChanged">
+                                @foreach (var country in countries)
+                                {
+                                    <option value="@country">@country</option>
+                                }
+                            </select>
                         </div>
-
-                        <!-- Footer Pagination -->
-                        <div class="d-flex flex-column flex-md-row align-items-center justify-content-between p-4 bg-light border-top gap-3">
-                            <div class="text-secondary small fw-medium">
-                                Showing <span class="text-dark">@(medicines.Any() ? skip + 1 : 0)</span> to <span class="text-dark">@(Math.Min(skip + take, totalCount))</span> of <span class="text-dark">@totalCount</span> entries
-                            </div>
-                            
-                            <div class="d-flex align-items-center gap-3">
-                                <div class="d-flex align-items-center gap-2">
-                                    <span class="small text-muted text-nowrap">Page size:</span>
-                                    <select class="form-select form-select-sm rounded-3" style="width: auto;" value="@take" @onchange="OnPageSizeChanged">
-                                        <option value="5">5</option>
-                                        <option value="10">10</option>
-                                        <option value="25">25</option>
-                                        <option value="50">50</option>
-                                    </select>
+                        
+                        <div class="text-center py-3 rounded-3 bg-light border">
+                            @if (isCalculating)
+                            {
+                                <div class="spinner-border spinner-border-sm text-primary my-3" role="status">
+                                    <span class="visually-hidden">Calculating...</span>
                                 </div>
-
-                                <nav aria-label="Pagination navigation">
-                                    <ul class="pagination pagination-sm mb-0 rounded-3">
-                                        <li class="page-item @(CanPrevPage ? "" : "disabled")">
-                                            <button class="page-item page-link rounded-start-3" @onclick="PrevPage" aria-label="Previous">
-                                                <i class="bi bi-chevron-left"></i> Prev
-                                            </button>
-                                        </li>
-                                        <li class="page-item active">
-                                            <span class="page-link px-3">@(CurrentPage)</span>
-                                        </li>
-                                        <li class="page-item @(CanNextPage ? "" : "disabled")">
-                                            <button class="page-item page-link rounded-end-3" @onclick="NextPage" aria-label="Next">
-                                                Next <i class="bi bi-chevron-right"></i>
-                                            </button>
-                                        </li>
-                                    </ul>
-                                </nav>
-                            </div>
+                                <div class="small text-secondary">Querying database...</div>
+                            }
+                            else
+                            {
+                                <h1 class="display-3 fw-bold text-primary mb-0 font-monospace">@expensiveCount</h1>
+                                <div class="small text-secondary text-uppercase tracking-wider fw-bold">Costly Drugs</div>
+                                <div class="extra-small text-muted mt-1">priced above average for <strong>@selectedCountry</strong></div>
+                            }
                         </div>
                     }
                 </div>
             </div>
         </div>
+        
+        <div class="col-md-8">
+            <MedicineFilterBar 
+                @bind-SearchTerm="searchTerm"
+                @bind-FilterIsActiveString="filterIsActiveString"
+                @bind-FilterCategoryId="filterCategoryId"
+                @bind-FilterSupplierId="filterSupplierId"
+                OnFiltersApplied="ApplyFilters"
+                OnFiltersReset="ResetFilters" />
+
+            <MedicineTable 
+                Medicines="medicines"
+                IsLoading="isLoading"
+                TotalCount="totalCount"
+                Skip="skip"
+                Take="take"
+                OnPageChanged="HandlePageChanged" />
+        </div>
     </div>
 </div>
 
-<style>
-    .text-gradient {
-        background: linear-gradient(135deg, #1e3c72 0%, #2a5298 100%);
-        -webkit-background-clip: text;
-        -webkit-text-fill-color: transparent;
-    }
-    
-    .filter-card {
-        background: rgba(255, 255, 255, 0.8);
-        backdrop-filter: blur(10px);
-        border: 1px solid rgba(220, 224, 230, 0.6);
-    }
-
-    .fs-7 {
-        font-size: 0.8rem;
-    }
-
-    .extra-small {
-        font-size: 0.72rem;
-    }
-</style>
-
 @code {
-    private CreateMedicineCommand command = new();
     private List<Medicine>? medicines;
     private int totalCount;
     private bool isLoading = true;
 
-    // Filters state
     private string? searchTerm;
     private string filterIsActiveString = "all";
     private int? filterCategoryId;
@@ -312,34 +113,77 @@
         _ => null
     };
 
-    // Success and error indicators
-    private bool showSuccessAlert = false;
-    private string? errorMessage;
-
-    // Pagination state
     private int skip = 0;
     private int take = 10;
 
-    private int CurrentPage => (skip / take) + 1;
-    private bool CanPrevPage => skip > 0;
-    private bool CanNextPage => (skip + take) < totalCount;
-
-    // Bidirectional parameters for Form
-    private int? selectedCategoryId
-    {
-        get => command.CategoryId > 0 ? command.CategoryId : null;
-        set => command.CategoryId = value ?? 0;
-    }
-
-    private int? selectedSupplierId
-    {
-        get => command.SupplierId > 0 ? command.SupplierId : null;
-        set => command.SupplierId = value ?? 0;
-    }
+    // Premium Analytics variables
+    private List<string> countries = new();
+    private string? selectedCountry;
+    private int expensiveCount;
+    private bool isCalculating = false;
 
     protected override async Task OnInitializedAsync()
     {
         Logger.LogInformation("Initializing Medicines page.");
+        await FetchData();
+        
+        // Fetch countries for Premium Analytics
+        try
+        {
+            var suppliersResult = await Mediator.Send(new GetSuppliersQuery());
+            countries = suppliersResult.Items
+                .Select(s => s.Country)
+                .Where(c => !string.IsNullOrWhiteSpace(c))
+                .Distinct()
+                .OrderBy(c => c)
+                .ToList();
+                
+            if (countries.Any())
+            {
+                selectedCountry = countries.First();
+                await CalculateExpensiveCount();
+            }
+        }
+        catch (Exception ex)
+        {
+            Logger.LogError(ex, "Error loading supplier countries.");
+        }
+    }
+
+    private async Task CalculateExpensiveCount()
+    {
+        if (string.IsNullOrWhiteSpace(selectedCountry))
+        {
+            expensiveCount = 0;
+            return;
+        }
+
+        isCalculating = true;
+        StateHasChanged();
+        try
+        {
+            expensiveCount = await Mediator.Send(new GetExpensiveMedicinesCountQuery(selectedCountry));
+        }
+        catch (Exception ex)
+        {
+            Logger.LogError(ex, "Error calculating expensive medicines count for country={Country}", selectedCountry);
+        }
+        finally
+        {
+            isCalculating = false;
+            StateHasChanged();
+        }
+    }
+
+    private async Task OnCountryChanged(ChangeEventArgs e)
+    {
+        selectedCountry = e.Value?.ToString();
+        await CalculateExpensiveCount();
+    }
+
+    private async Task FetchDataWithReset()
+    {
+        skip = 0;
         await FetchData();
     }
 
@@ -365,14 +209,10 @@
             var result = await Mediator.Send(query);
             medicines = result.Items;
             totalCount = result.TotalCount;
-
-            Logger.LogInformation("Fetched {Count} medicines (Total {Total}) for page {Page}.",
-                medicines?.Count ?? 0, totalCount, CurrentPage);
         }
         catch (Exception ex)
         {
             Logger.LogError(ex, "Error fetching medicines.");
-            errorMessage = "Failed to load medicines.";
         }
         finally
         {
@@ -381,83 +221,22 @@
         }
     }
 
-    private async Task HandleValidSubmit()
-    {
-        showSuccessAlert = false;
-        errorMessage = null;
-        Logger.LogInformation("Submitting CreateMedicineCommand for {Name}.", command.Name);
-
-        try
-        {
-            await Mediator.Send(command);
-            Logger.LogInformation("Medicine registered successfully.");
-            
-            command = new();
-            showSuccessAlert = true;
-            await FetchData();
-        }
-        catch (Exception ex)
-        {
-            Logger.LogError(ex, "Error creating medicine.");
-            errorMessage = ex.Message;
-        }
-    }
-
     private async Task ApplyFilters()
     {
-        skip = 0; // Reset page on new search
+        skip = 0;
         await FetchData();
     }
 
     private async Task ResetFilters()
     {
-        searchTerm = null;
-        filterIsActiveString = "all";
-        filterCategoryId = null;
-        filterSupplierId = null;
         skip = 0;
         await FetchData();
     }
 
-    private async Task ClearSearch()
+    private async Task HandlePageChanged((int Skip, int Take) pageInfo)
     {
-        searchTerm = null;
-        await ApplyFilters();
-    }
-
-    private async Task OnSearchKeyUp(KeyboardEventArgs e)
-    {
-        if (e.Key == "Enter")
-        {
-            await ApplyFilters();
-        }
-    }
-
-    private async Task PrevPage()
-    {
-        if (CanPrevPage)
-        {
-            skip = Math.Max(0, skip - take);
-            await FetchData(showSpinner: false);
-        }
-    }
-
-    private async Task NextPage()
-    {
-        if (CanNextPage)
-        {
-            skip += take;
-            await FetchData(showSpinner: false);
-        }
-    }
-
-    private async Task OnPageSizeChanged(ChangeEventArgs e)
-    {
-        if (int.TryParse(e.Value?.ToString(), out var newSize))
-        {
-            take = newSize;
-            skip = 0;
-            await FetchData(showSpinner: false);
-        }
+        skip = pageInfo.Skip;
+        take = pageInfo.Take;
+        await FetchData(showSpinner: false);
     }
 }

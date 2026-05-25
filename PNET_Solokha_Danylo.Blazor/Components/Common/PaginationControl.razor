@@ -1,0 +1,75 @@
+<div class="d-flex flex-column flex-md-row align-items-center justify-content-between p-4 bg-light border-top gap-3">
+    <div class="text-secondary small fw-medium">
+        Showing <span class="text-dark">@DisplayFrom</span> to <span class="text-dark">@DisplayTo</span> of <span class="text-dark">@TotalCount</span> entries
+    </div>
+    
+    <div class="d-flex align-items-center gap-3">
+        <div class="d-flex align-items-center gap-2">
+            <span class="small text-muted text-nowrap">Page size:</span>
+            <select class="form-select form-select-sm rounded-3" style="width: auto;" value="@PageSize" @onchange="HandlePageSizeChanged">
+                @foreach (var size in PageSizeOptions)
+                {
+                    <option value="@size">@size</option>
+                }
+            </select>
+        </div>
+
+        <nav aria-label="Pagination navigation">
+            <ul class="pagination pagination-sm mb-0 rounded-3">
+                <li class="page-item @(CanPrevPage ? "" : "disabled")">
+                    <button class="page-item page-link rounded-start-3" @onclick="PrevPage" aria-label="Previous">
+                        <i class="bi bi-chevron-left"></i> Prev
+                    </button>
+                </li>
+                <li class="page-item active">
+                    <span class="page-link px-3">@CurrentPage</span>
+                </li>
+                <li class="page-item @(CanNextPage ? "" : "disabled")">
+                    <button class="page-item page-link rounded-end-3" @onclick="NextPage" aria-label="Next">
+                        Next <i class="bi bi-chevron-right"></i>
+                    </button>
+                </li>
+            </ul>
+        </nav>
+    </div>
+</div>
+
+@code {
+    [Parameter] public int TotalCount { get; set; }
+    [Parameter] public int Skip { get; set; }
+    [Parameter] public int PageSize { get; set; } = 10;
+    [Parameter] public EventCallback<(int Skip, int Take)> OnPageChanged { get; set; }
+
+    [Parameter] public List<int> PageSizeOptions { get; set; } = new() { 5, 10, 25, 50 };
+
+    private int CurrentPage => TotalCount == 0 ? 1 : (Skip / PageSize) + 1;
+    private bool CanPrevPage => Skip > 0;
+    private bool CanNextPage => (Skip + PageSize) < TotalCount;
+
+    private int DisplayFrom => TotalCount == 0 ? 0 : Skip + 1;
+    private int DisplayTo => Math.Min(Skip + PageSize, TotalCount);
+
+    private async Task PrevPage()
+    {
+        if (CanPrevPage)
+        {
+            await OnPageChanged.InvokeAsync((Math.Max(0, Skip - PageSize), PageSize));
+        }
+    }
+
+    private async Task NextPage()
+    {
+        if (CanNextPage)
+        {
+            await OnPageChanged.InvokeAsync((Skip + PageSize, PageSize));
+        }
+    }
+
+    private async Task HandlePageSizeChanged(ChangeEventArgs e)
+    {
+        if (int.TryParse(e.Value?.ToString(), out var newSize))
+        {
+            await OnPageChanged.InvokeAsync((0, newSize));
+        }
+    }
+}

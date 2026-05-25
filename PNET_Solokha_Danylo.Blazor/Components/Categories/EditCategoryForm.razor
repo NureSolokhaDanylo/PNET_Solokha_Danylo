@@ -1,0 +1,93 @@
+@using MediatR
+@using PNET_Solokha_Danylo.Application.Categories.Commands.UpdateCategory
+
+<div class="card border-0 shadow-sm rounded-4 mb-4">
+    <div class="card-header bg-white border-0 pt-4 px-4 pb-2">
+        <h5 class="fw-bold mb-0 text-dark"><i class="bi bi-pencil-fill text-primary me-2"></i>Edit Category</h5>
+    </div>
+    <div class="card-body px-4 pb-4">
+        @if (!string.IsNullOrEmpty(errorMessage))
+        {
+            <div class="alert alert-danger alert-dismissible fade show rounded-3 mb-3" role="alert">
+                <i class="bi bi-exclamation-triangle-fill me-2"></i> @errorMessage
+                <button type="button" class="btn-close" @onclick="() => errorMessage = null" aria-label="Close"></button>
+            </div>
+        }
+
+        <EditForm Model="command" OnValidSubmit="HandleSubmit" FormName="EditCategoryFormInline">
+            <FluentValidationValidator />
+            <div class="row g-3">
+                <div class="col-md-6">
+                    <label class="form-label text-secondary small fw-medium">Name</label>
+                    <InputText @bind-Value="command.Name" class="form-control rounded-3" placeholder="e.g. Antibiotics" />
+                    <ValidationMessage For="@(() => command.Name)" class="text-danger small mt-1" />
+                </div>
+                <div class="col-12">
+                    <label class="form-label text-secondary small fw-medium">Description</label>
+                    <InputTextArea @bind-Value="command.Description" class="form-control rounded-3" rows="3" placeholder="Brief details about this classification..." />
+                    <ValidationMessage For="@(() => command.Description)" class="text-danger small mt-1" />
+                </div>
+            </div>
+            <div class="d-flex gap-2 mt-4">
+                <button type="submit" class="btn btn-primary rounded-3 px-4" disabled="@isSaving">
+                    @if (isSaving)
+                    {
+                        <span class="spinner-border spinner-border-sm me-1" role="status"></span>
+                    }
+                    else
+                    {
+                        <i class="bi bi-save me-1"></i>
+                    }
+                    Save Changes
+                </button>
+                <button type="button" class="btn btn-outline-secondary rounded-3" @onclick="OnCancel" disabled="@isSaving">
+                    <i class="bi bi-x-lg me-1"></i> Cancel
+                </button>
+            </div>
+        </EditForm>
+    </div>
+</div>
+
+@code {
+    [Parameter] public int CategoryId { get; set; }
+    [Parameter] public string InitialName { get; set; } = string.Empty;
+    [Parameter] public string? InitialDescription { get; set; }
+    [Parameter] public EventCallback OnSaved { get; set; }
+    [Parameter] public EventCallback OnCancel { get; set; }
+
+    [Inject] private IMediator Mediator { get; set; } = default!;
+    [Inject] private ILogger<EditCategoryForm> Logger { get; set; } = default!;
+
+    private UpdateCategoryCommand command = new();
+    private bool isSaving = false;
+    private string? errorMessage;
+
+    protected override void OnParametersSet()
+    {
+        command.CategoryId = CategoryId;
+        command.Name = InitialName;
+        command.Description = InitialDescription;
+    }
+
+    private async Task HandleSubmit()
+    {
+        isSaving = true;
+        errorMessage = null;
+
+        try
+        {
+            await Mediator.Send(command);
+            Logger.LogInformation("Category {CategoryId} updated successfully via component.", CategoryId);
+            await OnSaved.InvokeAsync();
+        }
+        catch (Exception ex)
+        {
+            Logger.LogError(ex, "Error updating category {CategoryId} in component.", CategoryId);
+            errorMessage = ex.Message;
+        }
+        finally
+        {
+            isSaving = false;
+        }
+    }
+}

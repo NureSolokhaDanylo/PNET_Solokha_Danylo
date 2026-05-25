@@ -1,0 +1,154 @@
+@using MediatR
+@using PNET_Solokha_Danylo.Application.Sales.Commands.CreateSale
+@using PNET_Solokha_Danylo.Domain.Entities
+@using PNET_Solokha_Danylo.Blazor.Components.Medicines
+@inject IMediator Mediator
+@inject ILogger<SalesRegistrationForm> Logger
+
+<div class="card border-0 shadow-sm rounded-4 mb-4">
+    <div class="card-header bg-white border-0 pt-4 px-4 pb-2">
+        <h5 class="fw-bold mb-0 text-dark"><i class="bi bi-cart-plus text-primary me-2"></i>Register New Sale</h5>
+    </div>
+    <div class="card-body px-4 pb-4">
+        @if (showSuccessAlert)
+        {
+            <div class="alert alert-success alert-dismissible fade show rounded-3" role="alert">
+                <i class="bi bi-check-circle-fill me-2"></i> Sale registered successfully!
+                <button type="button" class="btn-close" @onclick="() => showSuccessAlert = false" aria-label="Close"></button>
+            </div>
+        }
+
+        @if (!string.IsNullOrEmpty(errorMessage))
+        {
+            <div class="alert alert-danger alert-dismissible fade show rounded-3" role="alert">
+                <i class="bi bi-exclamation-triangle-fill me-2"></i> @errorMessage
+                <button type="button" class="btn-close" @onclick="() => errorMessage = null" aria-label="Close"></button>
+            </div>
+        }
+
+        <EditForm Model="command" OnValidSubmit="HandleValidSubmit" FormName="AddSaleForm">
+            <FluentValidationValidator />
+
+            <div class="mb-3">
+                <label class="form-label text-secondary small fw-medium">Select Medicine</label>
+                <MedicineSelector @bind-Value="selectedMedicineId" OnMedicineSelected="HandleMedicineSelected" IsActive="true" />
+                <ValidationMessage For="@(() => command.MedicineId)" class="text-danger small mt-1" />
+                @if (selectedMedicineStock.HasValue)
+                {
+                    <div class="form-text text-primary small mt-1 fw-medium">
+                        <i class="bi bi-info-circle me-1"></i> Stock Available: @selectedMedicineStock.Value items
+                    </div>
+                }
+            </div>
+
+            <div class="row g-2 mb-3">
+                <div class="col-md-6">
+                    <label for="quantity" class="form-label text-secondary small fw-medium">Quantity</label>
+                    <InputNumber id="quantity" @bind-Value="command.Quantity" class="form-control rounded-3" TValue="int" />
+                    <ValidationMessage For="@(() => command.Quantity)" class="text-danger small mt-1" />
+                </div>
+                <div class="col-md-6">
+                    <label for="soldPrice" class="form-label text-secondary small fw-medium">Price per unit</label>
+                    <div class="input-group">
+                        <span class="input-group-text bg-light">₴</span>
+                        <InputNumber id="soldPrice" @bind-Value="command.SoldPrice" class="form-control rounded-3" TValue="decimal" Step="0.01" />
+                    </div>
+                    <ValidationMessage For="@(() => command.SoldPrice)" class="text-danger small mt-1" />
+                </div>
+            </div>
+
+            <div class="mb-3">
+                <label for="discount" class="form-label text-secondary small fw-medium">Discount (Total amount)</label>
+                <div class="input-group">
+                    <span class="input-group-text bg-light">₴</span>
+                    <InputNumber id="discount" @bind-Value="command.Discount" class="form-control rounded-3" TValue="decimal" Step="0.01" />
+                </div>
+                <ValidationMessage For="@(() => command.Discount)" class="text-danger small mt-1" />
+            </div>
+
+            <div class="mb-3">
+                <label for="saleDate" class="form-label text-secondary small fw-medium">Sale Date</label>
+                <InputDate id="saleDate" @bind-Value="command.SaleDate" class="form-control rounded-3" TValue="DateTime" />
+                <ValidationMessage For="@(() => command.SaleDate)" class="text-danger small mt-1" />
+            </div>
+
+            <div class="p-3 mb-4 rounded-3 bg-light border border-light-subtle shadow-inner">
+                <div class="d-flex justify-content-between align-items-center mb-1">
+                    <span class="text-secondary small fw-medium">Subtotal (Pre-discount):</span>
+                    <span class="text-dark fw-bold">@PreDiscountTotal.ToString("C")</span>
+                </div>
+                <div class="d-flex justify-content-between align-items-center mb-2">
+                    <span class="text-secondary small fw-medium">Applied Discount:</span>
+                    <span class="text-danger fw-bold">-@command.Discount.ToString("C")</span>
+                </div>
+                <hr class="my-2 border-secondary-subtle" />
+                <div class="d-flex justify-content-between align-items-center">
+                    <span class="text-dark fw-bold">Final Revenue:</span>
+                    <span class="badge bg-success-subtle text-success fs-5 px-3 py-2 border border-success-subtle rounded-3">@FinalTotal.ToString("C")</span>
+                </div>
+            </div>
+
+            <button type="submit" class="btn btn-primary w-100 rounded-3 py-2">
+                <i class="bi bi-cart-check-fill me-1"></i> Register Transaction
+            </button>
+        </EditForm>
+    </div>
+</div>
+
+@code {
+    [Parameter] public EventCallback OnSaleRegistered { get; set; }
+
+    private CreateSaleCommand command = new();
+    private bool showSuccessAlert = false;
+    private string? errorMessage;
+    private int? selectedMedicineStock;
+
+    private int? selectedMedicineId
+    {
+        get => command.MedicineId > 0 ? command.MedicineId : null;
+        set => command.MedicineId = value ?? 0;
+    }
+
+    private decimal PreDiscountTotal => command.SoldPrice * command.Quantity;
+    private decimal FinalTotal => Math.Max(0, PreDiscountTotal - command.Discount);
+
+    private void HandleMedicineSelected(Medicine? medicine)
+    {
+        if (medicine != null)
+        {
+            command.SoldPrice = medicine.BasePrice;
+            selectedMedicineStock = medicine.TotalStock;
+            if (command.Quantity == 0)
+            {
+                command.Quantity = 1;
+            }
+        }
+        else
+        {
+            selectedMedicineStock = null;
+        }
+    }
+
+    private async Task HandleValidSubmit()
+    {
+        showSuccessAlert = false;
+        errorMessage = null;
+        Logger.LogInformation("Submitting CreateSaleCommand for MedicineId {MedicineId}.", command.MedicineId);
+
+        try
+        {
+            await Mediator.Send(command);
+            Logger.LogInformation("Sale registered successfully.");
+            
+            command = new();
+            selectedMedicineStock = null;
+            showSuccessAlert = true;
+            await OnSaleRegistered.InvokeAsync();
+        }
+        catch (Exception ex)
+        {
+            Logger.LogError(ex, "Error registering sale.");
+            errorMessage = ex.Message;
+        }
+    }
+}

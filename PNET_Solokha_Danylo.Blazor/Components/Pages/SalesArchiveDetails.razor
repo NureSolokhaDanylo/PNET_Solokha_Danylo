@@ -79,7 +79,7 @@
                 <div class="card border-0 shadow-sm rounded-4 stat-card bg-white p-3 h-100">
                     <div class="d-flex align-items-center justify-content-between mb-3">
                         <span class="text-secondary small fw-medium">Archived Unit Price</span>
-                        <div class="icon-shape bg-info-subtle text-info rounded-3 px-2 py-1"><i class="bi bi-currency-dollar fs-5"></i></div>
+                        <div class="icon-shape bg-info-subtle text-info rounded-3 px-2 py-1"><i class="bi bi-cash-coin fs-5"></i></div>
                     </div>
                     <h3 class="fw-bold mb-1 text-dark font-monospace">@details.SoldPrice.ToString("C")</h3>
                     <p class="text-muted extra-small mb-0">Recorded price per unit</p>
@@ -170,28 +170,7 @@
     }
 </div>
 
-<style>
-    .header-card {
-        background: linear-gradient(135deg, #3a6073 0%, #3a7bd5 100%);
-    }
-    .hover-link:hover {
-        color: #fff !important;
-        text-decoration: underline !important;
-    }
-    .fs-7 {
-        font-size: 0.8rem;
-    }
-    .extra-small {
-        font-size: 0.72rem;
-    }
-    .stat-card {
-        transition: transform 0.2s ease, box-shadow 0.2s ease;
-    }
-    .stat-card:hover {
-        transform: translateY(-3px);
-        box-shadow: 0 .5rem 1rem rgba(0,0,0,.08)!important;
-    }
-</style>
+
 
 @code {
     [Parameter]

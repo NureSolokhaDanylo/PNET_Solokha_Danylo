@@ -1,0 +1,20 @@
+.header-card {
+        background: linear-gradient(135deg, #3a6073 0%, #3a7bd5 100%);
+    }
+    .hover-link:hover {
+        color: #fff !important;
+        text-decoration: underline !important;
+    }
+    .fs-7 {
+        font-size: 0.8rem;
+    }
+    .extra-small {
+        font-size: 0.72rem;
+    }
+    .stat-card {
+        transition: transform 0.2s ease, box-shadow 0.2s ease;
+    }
+    .stat-card:hover {
+        transform: translateY(-3px);
+        box-shadow: 0 .5rem 1rem rgba(0,0,0,.08)!important;
+    }

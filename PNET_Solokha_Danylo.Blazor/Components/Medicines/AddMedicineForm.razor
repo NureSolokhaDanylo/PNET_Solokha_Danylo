@@ -1,0 +1,103 @@
+@using MediatR
+@using PNET_Solokha_Danylo.Application.Medicines.Commands.CreateMedicine
+@using PNET_Solokha_Danylo.Blazor.Components.Categories
+@using PNET_Solokha_Danylo.Blazor.Components.Suppliers
+@inject IMediator Mediator
+@inject ILogger<AddMedicineForm> Logger
+
+<div class="card border-0 shadow-sm rounded-4">
+    <div class="card-header bg-white border-0 pt-4 px-4 pb-2">
+        <h5 class="fw-bold mb-0 text-dark"><i class="bi bi-plus-circle text-primary me-2"></i>Add New Medicine</h5>
+    </div>
+    <div class="card-body px-4 pb-4">
+        @if (showSuccessAlert)
+        {
+            <div class="alert alert-success alert-dismissible fade show rounded-3" role="alert">
+                <i class="bi bi-check-circle-fill me-2"></i> Medicine added successfully!
+                <button type="button" class="btn-close" @onclick="() => showSuccessAlert = false" aria-label="Close"></button>
+            </div>
+        }
+
+        @if (!string.IsNullOrEmpty(errorMessage))
+        {
+            <div class="alert alert-danger alert-dismissible fade show rounded-3" role="alert">
+                <i class="bi bi-exclamation-triangle-fill me-2"></i> @errorMessage
+                <button type="button" class="btn-close" @onclick="() => errorMessage = null" aria-label="Close"></button>
+            </div>
+        }
+
+        <EditForm Model="command" OnValidSubmit="HandleValidSubmit" FormName="AddMedicineForm">
+            <FluentValidationValidator />
+            
+            <div class="mb-3">
+                <label for="name" class="form-label text-secondary small fw-medium">Medicine Name</label>
+                <InputText id="name" @bind-Value="command.Name" class="form-control rounded-3" placeholder="e.g. Paracetamol" />
+                <ValidationMessage For="@(() => command.Name)" class="text-danger small mt-1" />
+            </div>
+
+            <div class="mb-3">
+                <label class="form-label text-secondary small fw-medium">Category</label>
+                <CategorySelector @bind-Value="selectedCategoryId" />
+                <ValidationMessage For="@(() => command.CategoryId)" class="text-danger small mt-1" />
+            </div>
+
+            <div class="mb-3">
+                <label class="form-label text-secondary small fw-medium">Supplier</label>
+                <SupplierSelector @bind-Value="selectedSupplierId" />
+                <ValidationMessage For="@(() => command.SupplierId)" class="text-danger small mt-1" />
+            </div>
+
+            <div class="mb-3">
+                <label for="basePrice" class="form-label text-secondary small fw-medium">Base Price (₴)</label>
+                <InputNumber id="basePrice" @bind-Value="command.BasePrice" class="form-control rounded-3" TValue="decimal" Step="0.01" />
+                <ValidationMessage For="@(() => command.BasePrice)" class="text-danger small mt-1" />
+            </div>
+
+            <button type="submit" class="btn btn-primary w-100 rounded-3 py-2 mt-2">
+                <i class="bi bi-save me-1"></i> Register Medicine
+            </button>
+        </EditForm>
+    </div>
+</div>
+
+@code {
+    [Parameter] public EventCallback OnMedicineAdded { get; set; }
+
+    private CreateMedicineCommand command = new();
+    private bool showSuccessAlert = false;
+    private string? errorMessage;
+
+    private int? selectedCategoryId
+    {
+        get => command.CategoryId > 0 ? command.CategoryId : null;
+        set => command.CategoryId = value ?? 0;
+    }
+
+    private int? selectedSupplierId
+    {
+        get => command.SupplierId > 0 ? command.SupplierId : null;
+        set => command.SupplierId = value ?? 0;
+    }
+
+    private async Task HandleValidSubmit()
+    {
+        showSuccessAlert = false;
+        errorMessage = null;
+        Logger.LogInformation("Submitting CreateMedicineCommand for {Name}.", command.Name);
+
+        try
+        {
+            await Mediator.Send(command);
+            Logger.LogInformation("Medicine registered successfully.");
+            
+            command = new();
+            showSuccessAlert = true;
+            await OnMedicineAdded.InvokeAsync();
+        }
+        catch (Exception ex)
+        {
+            Logger.LogError(ex, "Error creating medicine.");
+            errorMessage = ex.Message;
+        }
+    }
+}

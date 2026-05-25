@@ -1,0 +1,109 @@
+@using MediatR
+@using PNET_Solokha_Danylo.Application.Sales.Commands.ArchiveSmallSales
+@using PNET_Solokha_Danylo.Blazor.Components.Categories
+@inject IMediator Mediator
+@inject ILogger<ArchiveSalesPanel> Logger
+
+<div class="card border-0 shadow-sm rounded-4 overflow-hidden">
+    <div class="card-header bg-white border-0 pt-4 px-4 pb-2">
+        <h5 class="fw-bold mb-0 text-dark">
+            <i class="bi bi-archive text-danger me-2"></i>Archive Small Sales
+        </h5>
+        <p class="text-muted extra-small mb-0 mt-1">Move bulk transactions with less than k items to Sales Archive using database cursor procedures.</p>
+    </div>
+
+    <div class="card-body px-4 pb-4 border-top border-light-subtle bg-light-subtle">
+        @if (showArchiveSuccessAlert)
+        {
+            <div class="alert alert-success alert-dismissible fade show rounded-3" role="alert">
+                <i class="bi bi-check-circle-fill me-2"></i> Small sales archived successfully!
+                <button type="button" class="btn-close" @onclick="() => showArchiveSuccessAlert = false" aria-label="Close"></button>
+            </div>
+        }
+
+        @if (!string.IsNullOrEmpty(archiveErrorMessage))
+        {
+            <div class="alert alert-danger alert-dismissible fade show rounded-3" role="alert">
+                <i class="bi bi-exclamation-triangle-fill me-2"></i> @archiveErrorMessage
+                <button type="button" class="btn-close" @onclick="() => archiveErrorMessage = null" aria-label="Close"></button>
+            </div>
+        }
+
+        <div class="mb-3">
+            <label class="form-label text-secondary small fw-medium">Category</label>
+            <CategorySelector @bind-Value="archiveCategoryId" />
+        </div>
+
+        <div class="mb-3">
+            <label for="archiveLimitK" class="form-label text-secondary small fw-medium">Minimum Quantity Limit (k)</label>
+            <input id="archiveLimitK" type="number" class="form-control rounded-3" @bind="archiveLimitK" placeholder="e.g. 5" />
+            <div class="form-text extra-small">Sales of this category with quantity less than <strong>k</strong> will be archived.</div>
+        </div>
+
+        <button class="btn btn-danger w-100 rounded-3 py-2 mt-2" @onclick="ExecuteArchiveProcedure" disabled="@isArchiving">
+            @if (isArchiving)
+            {
+                <span class="spinner-border spinner-border-sm me-2" role="status" aria-hidden="true"></span>
+                <span>Archiving...</span>
+            }
+            else
+            {
+                <i class="bi bi-cursor-fill me-1"></i>
+                <span>Run Stored Cursor Procedure</span>
+            }
+        </button>
+    </div>
+</div>
+
+@code {
+    [Parameter] public EventCallback OnArchiveCompleted { get; set; }
+
+    private bool isArchiving = false;
+    private int? archiveCategoryId;
+    private int archiveLimitK = 5;
+    private bool showArchiveSuccessAlert = false;
+    private string? archiveErrorMessage;
+
+    private async Task ExecuteArchiveProcedure()
+    {
+        showArchiveSuccessAlert = false;
+        archiveErrorMessage = null;
+
+        if (!archiveCategoryId.HasValue)
+        {
+            archiveErrorMessage = "Category selection is required for archiving.";
+            return;
+        }
+
+        if (archiveLimitK <= 0)
+        {
+            archiveErrorMessage = "Minimum quantity limit must be greater than 0.";
+            return;
+        }
+
+        isArchiving = true;
+        Logger.LogInformation("Running stored procedure to archive small sales of CategoryId {CategoryId} with limit k={LimitK}.",
+            archiveCategoryId.Value, archiveLimitK);
+
+        try
+        {
+            var archCommand = new ArchiveSmallSalesCommand(archiveCategoryId.Value, archiveLimitK);
+            await Mediator.Send(archCommand);
+
+            Logger.LogInformation("Archiving completed successfully.");
+            showArchiveSuccessAlert = true;
+            archiveCategoryId = null;
+            
+            await OnArchiveCompleted.InvokeAsync();
+        }
+        catch (Exception ex)
+        {
+            Logger.LogError(ex, "Error executing cursor archiving procedure.");
+            archiveErrorMessage = ex.Message;
+        }
+        finally
+        {
+            isArchiving = false;
+        }
+    }
+}

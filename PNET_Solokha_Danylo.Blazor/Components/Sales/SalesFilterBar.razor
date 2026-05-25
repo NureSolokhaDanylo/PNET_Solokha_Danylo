@@ -1,0 +1,138 @@
+@using PNET_Solokha_Danylo.Blazor.Components.Medicines
+
+<div class="card border-0 shadow-sm mb-4 rounded-4 filter-card">
+    <div class="card-body p-4">
+        <h5 class="fw-semibold mb-3 d-flex align-items-center">
+            <i class="bi bi-funnel-fill text-primary me-2"></i> Filters & Search
+        </h5>
+        <div class="row g-3">
+            <div class="col-md-6">
+                <label class="form-label text-secondary small fw-medium">Search Medicine</label>
+                <div class="input-group">
+                    <span class="input-group-text bg-white border-end-0"><i class="bi bi-search text-muted"></i></span>
+                    <input type="text" class="form-control border-start-0 ps-0 rounded-end-3" placeholder="e.g. Paracetamol, Ibuprofen..." value="@SearchTerm" @oninput="HandleSearchInput" @onkeyup="OnSearchKeyUp" />
+                    @if (!string.IsNullOrEmpty(SearchTerm))
+                    {
+                        <button class="btn btn-outline-secondary" type="button" @onclick="ClearSearch">
+                            <i class="bi bi-x-lg"></i>
+                        </button>
+                    }
+                </div>
+            </div>
+
+            <div class="col-md-6">
+                <label class="form-label text-secondary small fw-medium">Filter by Medicine</label>
+                <MedicineSelector Value="FilterMedicineId" ValueChanged="HandleFilterMedicineChanged" />
+            </div>
+        </div>
+
+        <div class="row g-3 mt-1">
+            <div class="col-md-6">
+                <label class="form-label text-secondary small fw-medium">Sold Date From</label>
+                <input type="date" class="form-control rounded-3" value="@(StartDate?.ToString("yyyy-MM-dd"))" @onchange="HandleStartDateChanged" />
+            </div>
+            <div class="col-md-6">
+                <label class="form-label text-secondary small fw-medium">Sold Date To</label>
+                <input type="date" class="form-control rounded-3" value="@(EndDate?.ToString("yyyy-MM-dd"))" @onchange="HandleEndDateChanged" />
+            </div>
+        </div>
+
+        <div class="d-flex justify-content-end gap-2 mt-4">
+            <button class="btn btn-light px-4 rounded-3 text-secondary" @onclick="HandleReset">
+                <i class="bi bi-arrow-counterclockwise me-1"></i> Reset
+            </button>
+            <button class="btn btn-primary px-4 rounded-3" @onclick="HandleApply">
+                <i class="bi bi-search me-1"></i> Apply Filters
+            </button>
+        </div>
+    </div>
+</div>
+
+@code {
+    [Parameter] public string? SearchTerm { get; set; }
+    [Parameter] public EventCallback<string?> SearchTermChanged { get; set; }
+
+    [Parameter] public int? FilterMedicineId { get; set; }
+    [Parameter] public EventCallback<int?> FilterMedicineIdChanged { get; set; }
+
+    [Parameter] public DateTime? StartDate { get; set; }
+    [Parameter] public EventCallback<DateTime?> StartDateChanged { get; set; }
+
+    [Parameter] public DateTime? EndDate { get; set; }
+    [Parameter] public EventCallback<DateTime?> EndDateChanged { get; set; }
+
+    [Parameter] public EventCallback OnFiltersApplied { get; set; }
+    [Parameter] public EventCallback OnFiltersReset { get; set; }
+
+    private async Task HandleSearchInput(ChangeEventArgs e)
+    {
+        SearchTerm = e.Value?.ToString();
+        await SearchTermChanged.InvokeAsync(SearchTerm);
+    }
+
+    private async Task OnSearchKeyUp(KeyboardEventArgs e)
+    {
+        if (e.Key == "Enter")
+        {
+            await OnFiltersApplied.InvokeAsync();
+        }
+    }
+
+    private async Task ClearSearch()
+    {
+        SearchTerm = null;
+        await SearchTermChanged.InvokeAsync(SearchTerm);
+        await OnFiltersApplied.InvokeAsync();
+    }
+
+    private async Task HandleFilterMedicineChanged(int? newValue)
+    {
+        FilterMedicineId = newValue;
+        await FilterMedicineIdChanged.InvokeAsync(FilterMedicineId);
+    }
+
+    private async Task HandleStartDateChanged(ChangeEventArgs e)
+    {
+        if (DateTime.TryParse(e.Value?.ToString(), out var date))
+        {
+            StartDate = date;
+        }
+        else
+        {
+            StartDate = null;
+        }
+        await StartDateChanged.InvokeAsync(StartDate);
+    }
+
+    private async Task HandleEndDateChanged(ChangeEventArgs e)
+    {
+        if (DateTime.TryParse(e.Value?.ToString(), out var date))
+        {
+            EndDate = date;
+        }
+        else
+        {
+            EndDate = null;
+        }
+        await EndDateChanged.InvokeAsync(EndDate);
+    }
+
+    private async Task HandleApply()
+    {
+        await OnFiltersApplied.InvokeAsync();
+    }
+
+    private async Task HandleReset()
+    {
+        SearchTerm = null;
+        FilterMedicineId = null;
+        StartDate = null;
+        EndDate = null;
+        await SearchTermChanged.InvokeAsync(SearchTerm);
+        await FilterMedicineIdChanged.InvokeAsync(FilterMedicineId);
+        await StartDateChanged.InvokeAsync(StartDate);
+        await EndDateChanged.InvokeAsync(EndDate);
+        
+        await OnFiltersReset.InvokeAsync();
+    }
+}

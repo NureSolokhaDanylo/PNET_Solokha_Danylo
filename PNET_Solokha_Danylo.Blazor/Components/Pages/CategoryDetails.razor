@@ -1,6 +1,7 @@
 @page "/categories/{CategoryId:int}"
 @rendermode InteractiveServer
 @using PNET_Solokha_Danylo.Application.Categories.Queries.GetCategoryDetails
+@using PNET_Solokha_Danylo.Application.Categories.Commands.DeleteCategory
 @inject IMediator Mediator
 @inject NavigationManager NavigationManager
 @inject ILogger<CategoryDetails> Logger
@@ -16,10 +17,86 @@
                 <li class="breadcrumb-item active" aria-current="page">Details</li>
             </ol>
         </nav>
-        <a href="categories" class="btn btn-outline-secondary btn-sm rounded-3">
-            <i class="bi bi-arrow-left me-1"></i> Back to List
-        </a>
+        <div class="d-flex gap-2">
+            @if (!isEditMode && !isDeleteConfirm && details != null)
+            {
+                <button class="btn btn-outline-primary btn-sm rounded-3" @onclick="EnterEditMode">
+                    <i class="bi bi-pencil-fill me-1"></i> Edit
+                </button>
+                <button class="btn btn-outline-danger btn-sm rounded-3" @onclick="EnterDeleteConfirm">
+                    <i class="bi bi-trash3-fill me-1"></i> Delete
+                </button>
+            }
+            <a href="categories" class="btn btn-outline-secondary btn-sm rounded-3">
+                <i class="bi bi-arrow-left me-1"></i> Back to List
+            </a>
+        </div>
     </div>
+
+    <!-- Global action alerts -->
+    @if (!string.IsNullOrEmpty(actionError))
+    {
+        <div class="alert alert-danger alert-dismissible fade show rounded-4 shadow-sm mb-4" role="alert">
+            <i class="bi bi-exclamation-triangle-fill me-2"></i> @actionError
+            <button type="button" class="btn-close" @onclick="() => actionError = null" aria-label="Close"></button>
+        </div>
+    }
+    @if (showActionSuccess)
+    {
+        <div class="alert alert-success alert-dismissible fade show rounded-4 shadow-sm mb-4" role="alert">
+            <i class="bi bi-check-circle-fill me-2"></i> Category updated successfully!
+            <button type="button" class="btn-close" @onclick="() => showActionSuccess = false" aria-label="Close"></button>
+        </div>
+    }
+
+    <!-- Delete Confirmation Panel -->
+    @if (isDeleteConfirm && details != null)
+    {
+        <div class="card border-0 shadow-sm rounded-4 mb-4 border-danger" style="border: 2px solid var(--bs-danger) !important;">
+            <div class="card-body p-4">
+                <div class="d-flex align-items-start gap-3">
+                    <div class="bg-danger-subtle text-danger rounded-3 p-3 flex-shrink-0">
+                        <i class="bi bi-exclamation-triangle-fill fs-4"></i>
+                    </div>
+                    <div class="flex-grow-1">
+                        <h5 class="fw-bold text-danger mb-1">Delete Category?</h5>
+                        <p class="text-secondary mb-3">
+                            You are about to permanently delete <strong>«@details.Name»</strong> (ID #@details.CategoryId).
+                            This action cannot be undone.<br />
+                            <span class="small text-muted">If there are medicines linked to this category, deletion will be blocked.</span>
+                        </p>
+                        <div class="d-flex gap-2">
+                            <button class="btn btn-danger rounded-3 px-4" @onclick="ConfirmDelete" disabled="@isActionLoading">
+                                @if (isActionLoading)
+                                {
+                                    <span class="spinner-border spinner-border-sm me-1" role="status"></span>
+                                }
+                                else
+                                {
+                                    <i class="bi bi-trash3-fill me-1"></i>
+                                }
+                                Confirm Delete
+                            </button>
+                            <button class="btn btn-outline-secondary rounded-3" @onclick="CancelAction" disabled="@isActionLoading">
+                                <i class="bi bi-x-lg me-1"></i> Cancel
+                            </button>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    }
+
+    <!-- Edit Form Panel -->
+    @if (isEditMode && details != null)
+    {
+        <PNET_Solokha_Danylo.Blazor.Components.Categories.EditCategoryForm 
+            CategoryId="CategoryId" 
+            InitialName="@details.Name" 
+            InitialDescription="@details.Description" 
+            OnSaved="HandleEditSuccess" 
+            OnCancel="CancelAction" />
+    }
 
     @if (isLoading)
     {
@@ -91,7 +168,7 @@
                 <div class="card border-0 shadow-sm rounded-4 stat-card bg-white p-3 h-100">
                     <div class="d-flex align-items-center justify-content-between mb-3">
                         <span class="text-secondary small fw-medium">Average Base Price</span>
-                        <div class="icon-shape bg-success-subtle text-success rounded-3 px-2 py-1"><i class="bi bi-currency-dollar fs-5"></i></div>
+                        <div class="icon-shape bg-success-subtle text-success rounded-3 px-2 py-1"><i class="bi bi-cash-coin fs-5"></i></div>
                     </div>
                     <h3 class="fw-bold mb-1 text-dark">@details.AveragePrice.ToString("C")</h3>
                     <p class="text-muted extra-small mb-0">Arithmetic average cost</p>
@@ -176,24 +253,7 @@
     }
 </div>
 
-<style>
-    .header-card {
-        background: linear-gradient(135deg, #1e3c72 0%, #2a5298 100%);
-    }
-    .fs-7 {
-        font-size: 0.8rem;
-    }
-    .extra-small {
-        font-size: 0.72rem;
-    }
-    .stat-card {
-        transition: transform 0.2s ease, box-shadow 0.2s ease;
-    }
-    .stat-card:hover {
-        transform: translateY(-3px);
-        box-shadow: 0 .5rem 1rem rgba(0,0,0,.08)!important;
-    }
-</style>
+
 
 @code {
     [Parameter]
@@ -201,6 +261,13 @@
 
     private CategoryDetailsDto? details;
     private bool isLoading = true;
+
+    // Edit/Delete UI state
+    private bool isEditMode = false;
+    private bool isDeleteConfirm = false;
+    private bool isActionLoading = false;
+    private bool showActionSuccess = false;
+    private string? actionError;
 
     protected override async Task OnParametersSetAsync()
     {
@@ -217,6 +284,75 @@
         finally
         {
             isLoading = false;
+        }
+    }
+
+    private void EnterEditMode()
+    {
+        actionError = null;
+        showActionSuccess = false;
+        isEditMode = true;
+        isDeleteConfirm = false;
+    }
+
+    private void EnterDeleteConfirm()
+    {
+        actionError = null;
+        showActionSuccess = false;
+        isDeleteConfirm = true;
+        isEditMode = false;
+    }
+
+    private void CancelAction()
+    {
+        isEditMode = false;
+        isDeleteConfirm = false;
+        actionError = null;
+    }
+
+    private async Task HandleEditSuccess()
+    {
+        isLoading = true;
+        showActionSuccess = false;
+        actionError = null;
+
+        try
+        {
+            details = await Mediator.Send(new GetCategoryDetailsQuery(CategoryId));
+            isEditMode = false;
+            showActionSuccess = true;
+        }
+        catch (Exception ex)
+        {
+            Logger.LogError(ex, "Error refreshing category details after save.");
+            actionError = ex.Message;
+        }
+        finally
+        {
+            isLoading = false;
+        }
+    }
+
+    private async Task ConfirmDelete()
+    {
+        isActionLoading = true;
+        actionError = null;
+
+        try
+        {
+            await Mediator.Send(new DeleteCategoryCommand(CategoryId));
+            Logger.LogInformation("Category {CategoryId} deleted successfully.", CategoryId);
+            NavigationManager.NavigateTo("/categories");
+        }
+        catch (Exception ex)
+        {
+            Logger.LogError(ex, "Error deleting category {CategoryId}.", CategoryId);
+            actionError = ex.Message;
+            isDeleteConfirm = false;
+        }
+        finally
+        {
+            isActionLoading = false;
         }
     }
 }

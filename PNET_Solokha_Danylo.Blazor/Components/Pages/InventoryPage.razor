@@ -1,12 +1,13 @@
 @page "/inventory"
 @rendermode InteractiveServer
+@using PNET_Solokha_Danylo.Application.Inventories.Queries.GetInventories
+@using PNET_Solokha_Danylo.Blazor.Components.Inventory
 @inject IMediator Mediator
 @inject ILogger<InventoryPage> Logger
 
 <PageTitle>Inventory Management</PageTitle>
 
 <div class="container-fluid py-4">
-    <!-- Header with Gradient Title -->
     <div class="d-flex align-items-center justify-content-between mb-4">
         <div>
             <h1 class="display-6 fw-bold text-gradient">Inventory Stock</h1>
@@ -18,293 +19,48 @@
     </div>
 
     <div class="row g-4">
-        <!-- Add Inventory Form (Left) -->
         <div class="col-md-4">
-            <div class="card border-0 shadow-sm rounded-4">
-                <div class="card-header bg-white border-0 pt-4 px-4 pb-2">
-                    <h5 class="fw-bold mb-0 text-dark"><i class="bi bi-plus-circle text-primary me-2"></i>Add Inventory Item</h5>
-                </div>
-                <div class="card-body px-4 pb-4">
-                    @if (showSuccessAlert)
-                    {
-                        <div class="alert alert-success alert-dismissible fade show rounded-3" role="alert">
-                            <i class="bi bi-check-circle-fill me-2"></i> Inventory batch added successfully!
-                            <button type="button" class="btn-close" @onclick="() => showSuccessAlert = false" aria-label="Close"></button>
-                        </div>
-                    }
-
-                    @if (!string.IsNullOrEmpty(errorMessage))
-                    {
-                        <div class="alert alert-danger alert-dismissible fade show rounded-3" role="alert">
-                            <i class="bi bi-exclamation-triangle-fill me-2"></i> @errorMessage
-                            <button type="button" class="btn-close" @onclick="() => errorMessage = null" aria-label="Close"></button>
-                        </div>
-                    }
-
-                    <EditForm Model="command" OnValidSubmit="HandleValidSubmit" FormName="AddInventoryForm">
-                        <FluentValidationValidator />
-
-                        <div class="mb-3">
-                            <label class="form-label text-secondary small fw-medium">Medicine</label>
-                            <MedicineSelector @bind-Value="selectedMedicineId" />
-                            <ValidationMessage For="@(() => command.MedicineId)" class="text-danger small mt-1" />
-                        </div>
-
-                        <div class="mb-3">
-                            <label for="batchNumber" class="form-label text-secondary small fw-medium">Batch Number</label>
-                            <InputText id="batchNumber" @bind-Value="command.BatchNumber" class="form-control rounded-3" placeholder="e.g. BT-99214" />
-                            <ValidationMessage For="@(() => command.BatchNumber)" class="text-danger small mt-1" />
-                        </div>
-
-                        <div class="mb-3">
-                            <label for="quantity" class="form-label text-secondary small fw-medium">Quantity</label>
-                            <InputNumber id="quantity" @bind-Value="command.Quantity" class="form-control rounded-3" TValue="int" />
-                            <ValidationMessage For="@(() => command.Quantity)" class="text-danger small mt-1" />
-                        </div>
-
-                        <div class="mb-3">
-                            <label for="expiryDate" class="form-label text-secondary small fw-medium">Expiry Date</label>
-                            <InputDate id="expiryDate" @bind-Value="command.ExpiryDate" class="form-control rounded-3" TValue="DateTime" />
-                            <ValidationMessage For="@(() => command.ExpiryDate)" class="text-danger small mt-1" />
-                        </div>
-
-                        <div class="mb-3">
-                            <label for="location" class="form-label text-secondary small fw-medium">Shelf / Storage Location</label>
-                            <InputText id="location" @bind-Value="command.Location" class="form-control rounded-3" placeholder="e.g. Shelf A-3" />
-                            <ValidationMessage For="@(() => command.Location)" class="text-danger small mt-1" />
-                        </div>
-
-                        <button type="submit" class="btn btn-primary w-100 rounded-3 py-2 mt-2">
-                            <i class="bi bi-save me-1"></i> Register Delivery
-                        </button>
-                    </EditForm>
-                </div>
-            </div>
+            <AddInventoryForm OnInventoryAdded="FetchDataWithReset" />
         </div>
 
-        <!-- Inventory List (Right) -->
         <div class="col-md-8">
-            <!-- Filter Bar Card -->
-            <div class="card border-0 shadow-sm mb-4 rounded-4 filter-card">
-                <div class="card-body p-4">
-                    <h5 class="fw-semibold mb-3 d-flex align-items-center">
-                        <i class="bi bi-funnel-fill text-primary me-2"></i> Filters & Search
-                    </h5>
-                    <div class="row g-3 align-items-end">
-                        <!-- Search Batch or Location -->
-                        <div class="col-md-5">
-                            <label class="form-label text-secondary small fw-medium">Search Batch / Shelf</label>
-                            <div class="input-group">
-                                <span class="input-group-text bg-white border-end-0"><i class="bi bi-search text-muted"></i></span>
-                                <input type="text" class="form-control border-start-0 ps-0" placeholder="e.g. BT-99, Shelf B..." @bind="searchTerm" @bind:event="oninput" @onkeyup="OnSearchKeyUp" />
-                                @if (!string.IsNullOrEmpty(searchTerm))
-                                {
-                                    <button class="btn btn-outline-secondary" type="button" @onclick="ClearSearch">
-                                        <i class="bi bi-x-lg"></i>
-                                    </button>
-                                }
-                            </div>
-                        </div>
+            <InventoryFilterBar 
+                @bind-SearchTerm="searchTerm"
+                @bind-FilterMedicineId="filterMedicineId"
+                OnFiltersApplied="ApplyFilters"
+                OnFiltersReset="ResetFilters" />
 
-                        <!-- Filter by Medicine -->
-                        <div class="col-md-4">
-                            <label class="form-label text-secondary small fw-medium">Filter by Medicine</label>
-                            <MedicineSelector @bind-Value="filterMedicineId" />
-                        </div>
-
-                        <!-- Buttons -->
-                        <div class="col-md-3 d-flex gap-2">
-                            <button class="btn btn-light w-50 rounded-3 text-secondary" @onclick="ResetFilters">
-                                <i class="bi bi-arrow-counterclockwise"></i>
-                            </button>
-                            <button class="btn btn-primary w-50 rounded-3" @onclick="ApplyFilters">
-                                Search
-                            </button>
-                        </div>
-                    </div>
-                </div>
-            </div>
-
-            <!-- List Table Card -->
-            <div class="card border-0 shadow-sm rounded-4 overflow-hidden">
-                <div class="card-body p-0">
-                    @if (isLoading)
-                    {
-                        <div class="d-flex flex-column align-items-center justify-content-center py-5">
-                            <div class="spinner-border text-primary mb-3" role="status">
-                                <span class="visually-hidden">Loading...</span>
-                            </div>
-                            <span class="text-secondary">Fetching inventories...</span>
-                        </div>
-                    }
-                    else if (inventories == null || !inventories.Any())
-                    {
-                        <div class="text-center py-5">
-                            <div class="mb-3 text-muted">
-                                <i class="bi bi-box-seam display-3"></i>
-                            </div>
-                            <h5 class="fw-semibold text-dark">No inventory found</h5>
-                            <p class="text-muted px-4">There are no batches registered matching your current filters.</p>
-                        </div>
-                    }
-                    else
-                    {
-                        <div class="table-responsive">
-                            <table class="table table-hover align-middle mb-0">
-                                <thead class="table-light">
-                                    <tr>
-                                        <th class="ps-4">ID</th>
-                                        <th>Medicine</th>
-                                        <th>Batch Number</th>
-                                        <th class="text-center">Quantity</th>
-                                        <th>Expiry Date</th>
-                                        <th>Location</th>
-                                        <th class="pe-4 text-center">Status</th>
-                                    </tr>
-                                </thead>
-                                <tbody>
-                                    @foreach (var inv in inventories)
-                                    {
-                                        var daysRemaining = (inv.ExpiryDate - DateTime.Today).TotalDays;
-                                        <tr>
-                                            <td class="ps-4">
-                                                <a href="/inventory/@inv.InventoryId" class="badge bg-secondary-subtle text-secondary-emphasis font-monospace px-2 py-1 fs-7 text-decoration-none">#@inv.InventoryId</a>
-                                            </td>
-                                            <td>
-                                                <a href="/medicines/@inv.MedicineId" class="fw-bold text-primary text-decoration-none">@inv.MedicineName</a>
-                                            </td>
-                                            <td>
-                                                <span class="badge bg-light text-dark font-monospace border px-2 py-1">@inv.BatchNumber</span>
-                                            </td>
-                                            <td class="text-center">
-                                                <span class="fw-bold text-primary">@inv.Quantity</span>
-                                            </td>
-                                            <td>
-                                                <div class="d-flex flex-column">
-                                                    <span class="text-dark small">@inv.ExpiryDate.ToString("yyyy-MM-dd")</span>
-                                                    <span class="text-muted extra-small">Remaining: @((int)daysRemaining) days</span>
-                                                </div>
-                                            </td>
-                                            <td>
-                                                <span class="text-secondary small"><i class="bi bi-geo-alt me-1"></i>@(inv.Location ?? "Main Shelf")</span>
-                                            </td>
-                                            <td class="pe-4 text-center">
-                                                @if (daysRemaining < 0)
-                                                {
-                                                    <span class="badge bg-danger px-2 py-1 rounded-pill">Expired</span>
-                                                }
-                                                else if (daysRemaining <= 30)
-                                                {
-                                                    <span class="badge bg-warning px-2 py-1 rounded-pill text-dark">Expiring Soon</span>
-                                                }
-                                                else
-                                                {
-                                                    <span class="badge bg-success px-2 py-1 rounded-pill">Fresh</span>
-                                                }
-                                            </td>
-                                        </tr>
-                                    }
-                                </tbody>
-                            </table>
-                        </div>
-
-                        <!-- Footer Pagination -->
-                        <div class="d-flex flex-column flex-md-row align-items-center justify-content-between p-4 bg-light border-top gap-3">
-                            <div class="text-secondary small fw-medium">
-                                Showing <span class="text-dark">@(inventories.Any() ? skip + 1 : 0)</span> to <span class="text-dark">@(Math.Min(skip + take, totalCount))</span> of <span class="text-dark">@totalCount</span> entries
-                            </div>
-                            
-                            <div class="d-flex align-items-center gap-3">
-                                <div class="d-flex align-items-center gap-2">
-                                    <span class="small text-muted text-nowrap">Page size:</span>
-                                    <select class="form-select form-select-sm rounded-3" style="width: auto;" value="@take" @onchange="OnPageSizeChanged">
-                                        <option value="5">5</option>
-                                        <option value="10">10</option>
-                                        <option value="25">25</option>
-                                        <option value="50">50</option>
-                                    </select>
-                                </div>
-
-                                <nav aria-label="Pagination navigation">
-                                    <ul class="pagination pagination-sm mb-0 rounded-3">
-                                        <li class="page-item @(CanPrevPage ? "" : "disabled")">
-                                            <button class="page-item page-link rounded-start-3" @onclick="PrevPage" aria-label="Previous">
-                                                <i class="bi bi-chevron-left"></i> Prev
-                                            </button>
-                                        </li>
-                                        <li class="page-item active">
-                                            <span class="page-link px-3">@(CurrentPage)</span>
-                                        </li>
-                                        <li class="page-item @(CanNextPage ? "" : "disabled")">
-                                            <button class="page-item page-link rounded-end-3" @onclick="NextPage" aria-label="Next">
-                                                Next <i class="bi bi-chevron-right"></i>
-                                            </button>
-                                        </li>
-                                    </ul>
-                                </nav>
-                            </div>
-                        </div>
-                    }
-                </div>
-            </div>
+            <InventoryTable 
+                Inventories="inventories"
+                IsLoading="isLoading"
+                TotalCount="totalCount"
+                Skip="skip"
+                Take="take"
+                OnPageChanged="HandlePageChanged" />
         </div>
     </div>
 </div>
 
-<style>
-    .text-gradient {
-        background: linear-gradient(135deg, #1e3c72 0%, #2a5298 100%);
-        -webkit-background-clip: text;
-        -webkit-text-fill-color: transparent;
-    }
-    
-    .filter-card {
-        background: rgba(255, 255, 255, 0.8);
-        backdrop-filter: blur(10px);
-        border: 1px solid rgba(220, 224, 230, 0.6);
-    }
-
-    .fs-7 {
-        font-size: 0.8rem;
-    }
-
-    .extra-small {
-        font-size: 0.72rem;
-    }
-</style>
-
 @code {
-    private CreateInventoryCommand command = new();
     private List<InventoryDto>? inventories;
     private int totalCount;
     private bool isLoading = true;
 
-    // Filters state
     private string? searchTerm;
     private int? filterMedicineId;
 
-    // Success and error indicators
-    private bool showSuccessAlert = false;
-    private string? errorMessage;
-
-    // Pagination state
     private int skip = 0;
     private int take = 10;
-
-    private int CurrentPage => (skip / take) + 1;
-    private bool CanPrevPage => skip > 0;
-    private bool CanNextPage => (skip + take) < totalCount;
-
-    // Bidirectional parameter handling for Form Medicine selector
-    private int? selectedMedicineId
-    {
-        get => command.MedicineId > 0 ? command.MedicineId : null;
-        set => command.MedicineId = value ?? 0;
-    }
 
     protected override async Task OnInitializedAsync()
     {
         Logger.LogInformation("Initializing InventoryPage component.");
+        await FetchData();
+    }
+
+    private async Task FetchDataWithReset()
+    {
+        skip = 0;
         await FetchData();
     }
 
@@ -325,9 +81,6 @@
             var result = await Mediator.Send(query);
             inventories = result.Items;
             totalCount = result.TotalCount;
-
-            Logger.LogInformation("Fetched {Count} inventory entries (Total {Total}) for page {Page}.",
-                inventories?.Count ?? 0, totalCount, CurrentPage);
         }
         catch (Exception ex)
         {
@@ -340,81 +93,22 @@
         }
     }
 
-    private async Task HandleValidSubmit()
-    {
-        showSuccessAlert = false;
-        errorMessage = null;
-        Logger.LogInformation("Submitting CreateInventoryCommand for MedicineId {MedicineId}.", command.MedicineId);
-
-        try
-        {
-            await Mediator.Send(command);
-            Logger.LogInformation("Inventory batch added successfully.");
-            
-            command = new();
-            showSuccessAlert = true;
-            await FetchData();
-        }
-        catch (Exception ex)
-        {
-            Logger.LogError(ex, "Error creating inventory item.");
-            errorMessage = ex.Message;
-        }
-    }
-
     private async Task ApplyFilters()
     {
-        skip = 0; // reset page on new search
+        skip = 0;
         await FetchData();
     }
 
     private async Task ResetFilters()
     {
-        searchTerm = null;
-        filterMedicineId = null;
         skip = 0;
         await FetchData();
     }
 
-    private async Task ClearSearch()
+    private async Task HandlePageChanged((int Skip, int Take) pageInfo)
     {
-        searchTerm = null;
-        await ApplyFilters();
-    }
-
-    private async Task OnSearchKeyUp(KeyboardEventArgs e)
-    {
-        if (e.Key == "Enter")
-        {
-            await ApplyFilters();
-        }
-    }
-
-    private async Task PrevPage()
-    {
-        if (CanPrevPage)
-        {
-            skip = Math.Max(0, skip - take);
-            await FetchData();
-        }
-    }
-
-    private async Task NextPage()
-    {
-        if (CanNextPage)
-        {
-            skip += take;
-            await FetchData();
-        }
-    }
-
-    private async Task OnPageSizeChanged(ChangeEventArgs e)
-    {
-        if (int.TryParse(e.Value?.ToString(), out var newSize))
-        {
-            take = newSize;
-            skip = 0;
-            await FetchData();
-        }
+        skip = pageInfo.Skip;
+        take = pageInfo.Take;
+        await FetchData();
     }
 }
