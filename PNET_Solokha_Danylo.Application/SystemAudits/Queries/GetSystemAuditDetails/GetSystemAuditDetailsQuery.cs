@@ -49,7 +49,7 @@ public class GetSystemAuditDetailsQueryHandler(
 {
     public async Task<SystemAuditDetailsDto?> Handle(GetSystemAuditDetailsQuery request, CancellationToken cancellationToken)
     {
-        logger.LogInformation("Handling GetSystemAuditDetailsQuery for LogId={LogId}", request.LogId);
+        logger.LogDebug("Handling GetSystemAuditDetailsQuery for LogId={LogId}", request.LogId);
         
         using var context = contextFactory.CreateDbContext();
         

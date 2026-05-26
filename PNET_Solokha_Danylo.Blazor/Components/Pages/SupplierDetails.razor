@@ -310,7 +310,6 @@
 
     protected override async Task OnParametersSetAsync()
     {
-        Logger.LogInformation("Loading details for SupplierId={SupplierId}", SupplierId);
         isLoading = true;
         try
         {
@@ -380,7 +379,6 @@
         try
         {
             await Mediator.Send(new DeleteSupplierCommand(SupplierId));
-            Logger.LogInformation("Supplier {SupplierId} deleted successfully.", SupplierId);
             NavigationManager.NavigateTo("/suppliers");
         }
         catch (Exception ex)

@@ -73,7 +73,7 @@ public class GetMedicineDetailsQueryHandler(
 {
     public async Task<MedicineDetailsDto?> Handle(GetMedicineDetailsQuery request, CancellationToken cancellationToken)
     {
-        logger.LogInformation("Handling GetMedicineDetailsQuery for MedicineId={MedicineId}", request.MedicineId);
+        logger.LogDebug("Handling GetMedicineDetailsQuery for MedicineId={MedicineId}", request.MedicineId);
         
         using var context = contextFactory.CreateDbContext();
         

@@ -50,89 +50,90 @@ public class CreateSaleCommandHandler(
 {
     public async Task<int> Handle(CreateSaleCommand request, CancellationToken cancellationToken)
     {
-        logger.LogInformation("Handling CreateSaleCommand: MedicineId={MedicineId}, Quantity={Quantity}, SoldPrice={SoldPrice}, Discount={Discount}",
+        logger.LogDebug("Handling CreateSaleCommand: MedicineId={MedicineId}, Quantity={Quantity}, SoldPrice={SoldPrice}, Discount={Discount}",
             request.MedicineId, request.Quantity, request.SoldPrice, request.Discount);
+
+        using var context = contextFactory.CreateDbContext();
+
+        var medicine = await context.Medicines.FindAsync(new object[] { request.MedicineId }, cancellationToken);
+        if (medicine == null)
+        {
+            logger.LogWarning("Medicine with ID {MedicineId} not found.", request.MedicineId);
+            throw new ArgumentException("Selected medicine does not exist.");
+        }
+
+        if (!medicine.IsActive)
+        {
+            logger.LogWarning("Medicine {MedicineName} (ID {MedicineId}) is inactive. Sales are not allowed.", medicine.Name, request.MedicineId);
+            throw new InvalidOperationException($"Cannot register sale for '{medicine.Name}' because it is inactive.");
+        }
+
+        if (medicine.TotalStock < request.Quantity)
+        {
+            logger.LogWarning("Not enough stock for medicine {MedicineName}. Available: {Available}, Requested: {Requested}",
+                medicine.Name, medicine.TotalStock, request.Quantity);
+            throw new InvalidOperationException($"Not enough stock for medicine '{medicine.Name}'. Available stock: {medicine.TotalStock}.");
+        }
+
+        // FIFO: Fetch active inventory batches for this medicine ordered by ExpiryDate
+        var batches = await context.Inventories
+            .Where(i => i.MedicineId == request.MedicineId && i.Quantity > 0)
+            .OrderBy(i => i.ExpiryDate)
+            .ToListAsync(cancellationToken);
+
+        int remainingToDeduct = request.Quantity;
+        foreach (var batch in batches)
+        {
+            if (remainingToDeduct <= 0)
+                break;
+
+            if (batch.Quantity > remainingToDeduct)
+            {
+                batch.Quantity -= remainingToDeduct;
+                remainingToDeduct = 0;
+            }
+            else
+            {
+                remainingToDeduct -= batch.Quantity;
+                context.Inventories.Remove(batch);
+            }
+        }
+
+        if (remainingToDeduct > 0)
+        {
+            logger.LogWarning("Discrepancy detected between Medicine.TotalStock ({TotalStock}) and available quantities in Inventory batches. Shortage: {Shortage}",
+                medicine.TotalStock, remainingToDeduct);
+            throw new InvalidOperationException("Not enough items available in active inventory batches to fulfill the sale.");
+        }
+
+        // Create sale record
+        var entity = new Sale
+        {
+            MedicineId = request.MedicineId,
+            Quantity = request.Quantity,
+            SoldPrice = request.SoldPrice,
+            Discount = request.Discount,
+            SaleDate = request.SaleDate
+        };
+
+        // Deduct stock from medicine
+        medicine.SetStock(medicine.TotalStock - request.Quantity);
+
+        context.Sales.Add(entity);
 
         try
         {
-            using var context = contextFactory.CreateDbContext();
-
-            var medicine = await context.Medicines.FindAsync(new object[] { request.MedicineId }, cancellationToken);
-            if (medicine == null)
-            {
-                logger.LogWarning("Medicine with ID {MedicineId} not found.", request.MedicineId);
-                throw new ArgumentException("Selected medicine does not exist.");
-            }
-
-            if (!medicine.IsActive)
-            {
-                logger.LogWarning("Medicine {MedicineName} (ID {MedicineId}) is inactive. Sales are not allowed.", medicine.Name, request.MedicineId);
-                throw new InvalidOperationException($"Cannot register sale for '{medicine.Name}' because it is inactive.");
-            }
-
-            if (medicine.TotalStock < request.Quantity)
-            {
-                logger.LogWarning("Not enough stock for medicine {MedicineName}. Available: {Available}, Requested: {Requested}",
-                    medicine.Name, medicine.TotalStock, request.Quantity);
-                throw new InvalidOperationException($"Not enough stock for medicine '{medicine.Name}'. Available stock: {medicine.TotalStock}.");
-            }
-
-            // FIFO: Fetch active inventory batches for this medicine ordered by ExpiryDate
-            var batches = await context.Inventories
-                .Where(i => i.MedicineId == request.MedicineId && i.Quantity > 0)
-                .OrderBy(i => i.ExpiryDate)
-                .ToListAsync(cancellationToken);
-
-            int remainingToDeduct = request.Quantity;
-            foreach (var batch in batches)
-            {
-                if (remainingToDeduct <= 0)
-                    break;
-
-                if (batch.Quantity >= remainingToDeduct)
-                {
-                    batch.Quantity -= remainingToDeduct;
-                    remainingToDeduct = 0;
-                }
-                else
-                {
-                    remainingToDeduct -= batch.Quantity;
-                    batch.Quantity = 0;
-                }
-            }
-
-            if (remainingToDeduct > 0)
-            {
-                logger.LogWarning("Discrepancy detected between Medicine.TotalStock ({TotalStock}) and available quantities in Inventory batches. Shortage: {Shortage}",
-                    medicine.TotalStock, remainingToDeduct);
-                throw new InvalidOperationException("Not enough items available in active inventory batches to fulfill the sale.");
-            }
-
-            // Create sale record
-            var entity = new Sale
-            {
-                MedicineId = request.MedicineId,
-                Quantity = request.Quantity,
-                SoldPrice = request.SoldPrice,
-                Discount = request.Discount,
-                SaleDate = request.SaleDate
-            };
-
-            // Deduct stock from medicine
-            medicine.SetStock(medicine.TotalStock - request.Quantity);
-
-            context.Sales.Add(entity);
             await context.SaveChangesAsync(cancellationToken);
-
-            logger.LogInformation("Successfully registered sale with ID {SaleId} for medicine {MedicineName}.",
-                entity.SaleId, medicine.Name);
-
-            return entity.SaleId;
         }
         catch (Exception ex)
         {
             logger.LogError(ex, "Failed to register sale for Medicine ID {MedicineId}.", request.MedicineId);
             throw;
         }
+
+        logger.LogInformation("Successfully registered sale with ID {SaleId} for medicine {MedicineName}.",
+            entity.SaleId, medicine.Name);
+
+        return entity.SaleId;
     }
 }

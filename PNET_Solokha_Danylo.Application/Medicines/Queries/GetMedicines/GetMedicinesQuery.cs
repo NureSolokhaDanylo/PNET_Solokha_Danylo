@@ -24,7 +24,7 @@ public class GetMedicinesQueryHandler(
 {
     public async Task<MedicineQueryResult> Handle(GetMedicinesQuery request, CancellationToken cancellationToken)
     {
-        logger.LogInformation("Handling GetMedicinesQuery: SearchTerm={SearchTerm}, CategoryId={CategoryId}, SupplierId={SupplierId}, IsActive={IsActive}, Skip={Skip}, Take={Take}",
+        logger.LogDebug("Handling GetMedicinesQuery: SearchTerm={SearchTerm}, CategoryId={CategoryId}, SupplierId={SupplierId}, IsActive={IsActive}, Skip={Skip}, Take={Take}",
             request.SearchTerm, request.CategoryId, request.SupplierId, request.IsActive, request.Skip, request.Take);
 
         using var context = contextFactory.CreateDbContext();

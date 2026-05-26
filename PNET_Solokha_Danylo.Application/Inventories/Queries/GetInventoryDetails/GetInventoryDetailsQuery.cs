@@ -34,7 +34,7 @@ public class GetInventoryDetailsQueryHandler(
 {
     public async Task<InventoryDetailsDto?> Handle(GetInventoryDetailsQuery request, CancellationToken cancellationToken)
     {
-        logger.LogInformation("Handling GetInventoryDetailsQuery for InventoryId={InventoryId}", request.InventoryId);
+        logger.LogDebug("Handling GetInventoryDetailsQuery for InventoryId={InventoryId}", request.InventoryId);
         
         using var context = contextFactory.CreateDbContext();
         

@@ -45,7 +45,7 @@ public class UpdateMedicineCommandHandler(
 {
     public async Task Handle(UpdateMedicineCommand request, CancellationToken cancellationToken)
     {
-        logger.LogInformation("Handling UpdateMedicineCommand for MedicineId={MedicineId}", request.MedicineId);
+        logger.LogDebug("Handling UpdateMedicineCommand for MedicineId={MedicineId}", request.MedicineId);
 
         using var context = contextFactory.CreateDbContext();
 
@@ -89,7 +89,15 @@ public class UpdateMedicineCommandHandler(
             entity.Deactivate();
         }
 
-        await context.SaveChangesAsync(cancellationToken);
+        try
+        {
+            await context.SaveChangesAsync(cancellationToken);
+        }
+        catch (Exception ex)
+        {
+            logger.LogError(ex, "Failed to update medicine {MedicineId}", request.MedicineId);
+            throw;
+        }
 
         logger.LogInformation("Successfully updated medicine {MedicineId} — new name: {Name}", request.MedicineId, request.Name);
     }

@@ -83,12 +83,10 @@
     {
         showSuccessAlert = false;
         errorMessage = null;
-        Logger.LogInformation("Submitting CreateMedicineCommand for {Name}.", command.Name);
 
         try
         {
             await Mediator.Send(command);
-            Logger.LogInformation("Medicine registered successfully.");
             
             command = new();
             showSuccessAlert = true;

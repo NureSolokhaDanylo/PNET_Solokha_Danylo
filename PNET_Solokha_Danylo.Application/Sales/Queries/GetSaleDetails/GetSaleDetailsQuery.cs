@@ -37,7 +37,7 @@ public class GetSaleDetailsQueryHandler(
 {
     public async Task<SaleDetailsDto?> Handle(GetSaleDetailsQuery request, CancellationToken cancellationToken)
     {
-        logger.LogInformation("Handling GetSaleDetailsQuery for SaleId={SaleId}", request.SaleId);
+        logger.LogDebug("Handling GetSaleDetailsQuery for SaleId={SaleId}", request.SaleId);
         
         using var context = contextFactory.CreateDbContext();
         

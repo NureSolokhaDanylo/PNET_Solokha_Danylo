@@ -133,12 +133,10 @@
     {
         showSuccessAlert = false;
         errorMessage = null;
-        Logger.LogInformation("Submitting CreateSaleCommand for MedicineId {MedicineId}.", command.MedicineId);
 
         try
         {
             await Mediator.Send(command);
-            Logger.LogInformation("Sale registered successfully.");
             
             command = new();
             selectedMedicineStock = null;

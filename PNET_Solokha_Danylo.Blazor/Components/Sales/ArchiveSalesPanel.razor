@@ -82,15 +82,12 @@
         }
 
         isArchiving = true;
-        Logger.LogInformation("Running stored procedure to archive small sales of CategoryId {CategoryId} with limit k={LimitK}.",
-            archiveCategoryId.Value, archiveLimitK);
 
         try
         {
             var archCommand = new ArchiveSmallSalesCommand(archiveCategoryId.Value, archiveLimitK);
             await Mediator.Send(archCommand);
 
-            Logger.LogInformation("Archiving completed successfully.");
             showArchiveSuccessAlert = true;
             archiveCategoryId = null;
             

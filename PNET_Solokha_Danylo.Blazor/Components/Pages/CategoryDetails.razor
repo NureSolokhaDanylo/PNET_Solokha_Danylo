@@ -271,7 +271,6 @@
 
     protected override async Task OnParametersSetAsync()
     {
-        Logger.LogInformation("Loading details for CategoryId={CategoryId}", CategoryId);
         isLoading = true;
         try
         {
@@ -341,7 +340,6 @@
         try
         {
             await Mediator.Send(new DeleteCategoryCommand(CategoryId));
-            Logger.LogInformation("Category {CategoryId} deleted successfully.", CategoryId);
             NavigationManager.NavigateTo("/categories");
         }
         catch (Exception ex)

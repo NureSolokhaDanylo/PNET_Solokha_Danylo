@@ -50,7 +50,7 @@ public class GetSupplierDetailsQueryHandler(
 {
     public async Task<SupplierDetailsDto?> Handle(GetSupplierDetailsQuery request, CancellationToken cancellationToken)
     {
-        logger.LogInformation("Handling GetSupplierDetailsQuery for SupplierId={SupplierId}", request.SupplierId);
+        logger.LogDebug("Handling GetSupplierDetailsQuery for SupplierId={SupplierId}", request.SupplierId);
         
         using var context = contextFactory.CreateDbContext();
         

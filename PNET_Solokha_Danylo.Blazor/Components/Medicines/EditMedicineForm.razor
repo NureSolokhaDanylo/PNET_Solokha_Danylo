@@ -120,7 +120,6 @@
         try
         {
             await Mediator.Send(command);
-            Logger.LogInformation("Medicine {MedicineId} updated successfully via component.", MedicineId);
             await OnSaved.InvokeAsync();
         }
         catch (Exception ex)

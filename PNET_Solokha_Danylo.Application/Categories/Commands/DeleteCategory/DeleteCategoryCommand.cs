@@ -14,7 +14,7 @@ public class DeleteCategoryCommandHandler(
 {
     public async Task Handle(DeleteCategoryCommand request, CancellationToken cancellationToken)
     {
-        logger.LogInformation("Handling DeleteCategoryCommand for CategoryId={CategoryId}", request.CategoryId);
+        logger.LogDebug("Handling DeleteCategoryCommand for CategoryId={CategoryId}", request.CategoryId);
 
         using var context = contextFactory.CreateDbContext();
 

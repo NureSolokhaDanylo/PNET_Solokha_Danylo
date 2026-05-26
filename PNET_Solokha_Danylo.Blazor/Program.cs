@@ -19,12 +19,12 @@ var builder = WebApplication.CreateBuilder(args);
 var lokiUrl = builder.Configuration["LOKI_URL"] ?? "http://localhost:3100";
 
 Log.Logger = new LoggerConfiguration()
-    .MinimumLevel.Information()
+    .MinimumLevel.Debug()
     .MinimumLevel.Override("Microsoft", LogEventLevel.Warning)
     .MinimumLevel.Override("Microsoft.AspNetCore", LogEventLevel.Warning)
     .Enrich.FromLogContext()
     .WriteTo.Console()
-    .WriteTo.GrafanaLoki(lokiUrl, labels: new[] { new LokiLabel { Key = "app", Value = "aspnetcore" } })
+    .WriteTo.GrafanaLoki(lokiUrl, restrictedToMinimumLevel: LogEventLevel.Information, labels: new[] { new LokiLabel { Key = "app", Value = "aspnetcore" } })
     .CreateLogger();
 
 builder.Logging.ClearProviders();

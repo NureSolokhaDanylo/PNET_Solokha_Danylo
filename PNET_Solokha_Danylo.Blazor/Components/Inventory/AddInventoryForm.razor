@@ -82,12 +82,10 @@
     {
         showSuccessAlert = false;
         errorMessage = null;
-        Logger.LogInformation("Submitting CreateInventoryCommand for MedicineId {MedicineId}.", command.MedicineId);
 
         try
         {
             await Mediator.Send(command);
-            Logger.LogInformation("Inventory batch added successfully.");
             
             command = new();
             showSuccessAlert = true;

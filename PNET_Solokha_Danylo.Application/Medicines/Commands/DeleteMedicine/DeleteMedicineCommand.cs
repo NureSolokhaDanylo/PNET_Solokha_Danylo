@@ -14,7 +14,7 @@ public class DeleteMedicineCommandHandler(
 {
     public async Task Handle(DeleteMedicineCommand request, CancellationToken cancellationToken)
     {
-        logger.LogInformation("Handling DeleteMedicineCommand for MedicineId={MedicineId}", request.MedicineId);
+        logger.LogDebug("Handling DeleteMedicineCommand for MedicineId={MedicineId}", request.MedicineId);
 
         using var context = contextFactory.CreateDbContext();
 

@@ -41,72 +41,64 @@ public class GetSalesArchivesQueryHandler(
 {
     public async Task<SalesArchiveQueryResult> Handle(GetSalesArchivesQuery request, CancellationToken cancellationToken)
     {
-        logger.LogInformation("Handling GetSalesArchivesQuery: SearchTerm={SearchTerm}, MedicineId={MedicineId}, SaleId={SaleId}, StartDate={StartDate}, EndDate={EndDate}, Skip={Skip}, Take={Take}",
+        logger.LogDebug("Handling GetSalesArchivesQuery: SearchTerm={SearchTerm}, MedicineId={MedicineId}, SaleId={SaleId}, StartDate={StartDate}, EndDate={EndDate}, Skip={Skip}, Take={Take}",
             request.SearchTerm, request.MedicineId, request.SaleId, request.StartDate, request.EndDate, request.Skip, request.Take);
 
-        try
+        using var context = contextFactory.CreateDbContext();
+
+        var baseQuery = from sa in context.SalesArchive
+                        join m in context.Medicines on sa.MedicineId equals m.MedicineId into medGroup
+                        from med in medGroup.DefaultIfEmpty()
+                        select new SalesArchiveDto
+                        {
+                            ArchiveId = sa.ArchiveId,
+                            SaleId = sa.SaleId,
+                            MedicineId = sa.MedicineId,
+                            MedicineName = med != null ? med.Name : "Unknown",
+                            Quantity = sa.Quantity,
+                            SaleDate = sa.SaleDate,
+                            Reason = sa.Reason,
+                            ArchivedAt = sa.ArchivedAt
+                        };
+
+        // Applying filters
+        if (request.MedicineId.HasValue)
         {
-            using var context = contextFactory.CreateDbContext();
-
-            var baseQuery = from sa in context.SalesArchive
-                            join m in context.Medicines on sa.MedicineId equals m.MedicineId into medGroup
-                            from med in medGroup.DefaultIfEmpty()
-                            select new SalesArchiveDto
-                            {
-                                ArchiveId = sa.ArchiveId,
-                                SaleId = sa.SaleId,
-                                MedicineId = sa.MedicineId,
-                                MedicineName = med != null ? med.Name : "Unknown",
-                                Quantity = sa.Quantity,
-                                SaleDate = sa.SaleDate,
-                                Reason = sa.Reason,
-                                ArchivedAt = sa.ArchivedAt
-                            };
-
-            // Applying filters
-            if (request.MedicineId.HasValue)
-            {
-                baseQuery = baseQuery.Where(x => x.MedicineId == request.MedicineId.Value);
-            }
-
-            if (request.SaleId.HasValue)
-            {
-                baseQuery = baseQuery.Where(x => x.SaleId == request.SaleId.Value);
-            }
-
-            if (request.StartDate.HasValue)
-            {
-                baseQuery = baseQuery.Where(x => x.ArchivedAt >= request.StartDate.Value);
-            }
-
-            if (request.EndDate.HasValue)
-            {
-                baseQuery = baseQuery.Where(x => x.ArchivedAt <= request.EndDate.Value);
-            }
-
-            if (!string.IsNullOrWhiteSpace(request.SearchTerm))
-            {
-                var term = request.SearchTerm.Trim().ToLower();
-                baseQuery = baseQuery.Where(x => 
-                    (x.Reason != null && x.Reason.ToLower().Contains(term)) ||
-                    (x.MedicineName != null && x.MedicineName.ToLower().Contains(term)));
-            }
-
-            int totalCount = await baseQuery.CountAsync(cancellationToken);
-
-            var items = await baseQuery
-                .OrderByDescending(x => x.ArchivedAt)
-                .Skip(request.Skip)
-                .Take(request.Take)
-                .ToListAsync(cancellationToken);
-
-            logger.LogInformation("Successfully fetched {Count} (out of {Total}) SalesArchives.", items.Count, totalCount);
-            return new SalesArchiveQueryResult(items, totalCount);
+            baseQuery = baseQuery.Where(x => x.MedicineId == request.MedicineId.Value);
         }
-        catch (Exception ex)
+
+        if (request.SaleId.HasValue)
         {
-            logger.LogError(ex, "Error occurred while handling GetSalesArchivesQuery.");
-            throw;
+            baseQuery = baseQuery.Where(x => x.SaleId == request.SaleId.Value);
         }
+
+        if (request.StartDate.HasValue)
+        {
+            baseQuery = baseQuery.Where(x => x.ArchivedAt >= request.StartDate.Value);
+        }
+
+        if (request.EndDate.HasValue)
+        {
+            baseQuery = baseQuery.Where(x => x.ArchivedAt <= request.EndDate.Value);
+        }
+
+        if (!string.IsNullOrWhiteSpace(request.SearchTerm))
+        {
+            var term = request.SearchTerm.Trim().ToLower();
+            baseQuery = baseQuery.Where(x => 
+                (x.Reason != null && x.Reason.ToLower().Contains(term)) ||
+                (x.MedicineName != null && x.MedicineName.ToLower().Contains(term)));
+        }
+
+        int totalCount = await baseQuery.CountAsync(cancellationToken);
+
+        var items = await baseQuery
+            .OrderByDescending(x => x.ArchivedAt)
+            .Skip(request.Skip)
+            .Take(request.Take)
+            .ToListAsync(cancellationToken);
+
+        logger.LogDebug("Successfully fetched {Count} (out of {Total}) SalesArchives.", items.Count, totalCount);
+        return new SalesArchiveQueryResult(items, totalCount);
     }
 }

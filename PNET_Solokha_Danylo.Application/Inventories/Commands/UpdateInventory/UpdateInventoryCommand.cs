@@ -44,7 +44,7 @@ public class UpdateInventoryCommandHandler(
 {
     public async Task Handle(UpdateInventoryCommand request, CancellationToken cancellationToken)
     {
-        logger.LogInformation("Handling UpdateInventoryCommand: InventoryId={InventoryId}, Qty={Quantity}", request.InventoryId, request.Quantity);
+        logger.LogDebug("Handling UpdateInventoryCommand: InventoryId={InventoryId}, Qty={Quantity}", request.InventoryId, request.Quantity);
 
         using var context = contextFactory.CreateDbContext();
 
@@ -62,7 +62,7 @@ public class UpdateInventoryCommandHandler(
 
         if (medicine is null)
         {
-            logger.LogError("Parent Medicine with ID {MedicineId} not found for inventory item {InventoryId}.", inventory.MedicineId, request.InventoryId);
+            logger.LogWarning("Parent Medicine with ID {MedicineId} not found for inventory item {InventoryId}.", inventory.MedicineId, request.InventoryId);
             throw new KeyNotFoundException($"Associated medicine with ID {inventory.MedicineId} was not found.");
         }
 
@@ -70,13 +70,28 @@ public class UpdateInventoryCommandHandler(
         int quantityDiff = request.Quantity - inventory.Quantity;
         medicine.SetStock(medicine.TotalStock + quantityDiff);
 
-        // Update fields
-        inventory.BatchNumber = request.BatchNumber;
-        inventory.ExpiryDate = request.ExpiryDate;
-        inventory.Quantity = request.Quantity;
-        inventory.Location = request.Location ?? "Main Shelf";
+        if (request.Quantity == 0)
+        {
+            context.Inventories.Remove(inventory);
+        }
+        else
+        {
+            // Update fields
+            inventory.BatchNumber = request.BatchNumber;
+            inventory.ExpiryDate = request.ExpiryDate;
+            inventory.Quantity = request.Quantity;
+            inventory.Location = request.Location ?? "Main Shelf";
+        }
 
-        await context.SaveChangesAsync(cancellationToken);
+        try
+        {
+            await context.SaveChangesAsync(cancellationToken);
+        }
+        catch (Exception ex)
+        {
+            logger.LogError(ex, "Failed to update inventory item {InventoryId}.", request.InventoryId);
+            throw;
+        }
 
         logger.LogInformation("Successfully updated inventory item {InventoryId} for medicine {MedicineId} — stock diff: {Diff}",
             request.InventoryId, medicine.MedicineId, quantityDiff);

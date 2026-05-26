@@ -38,7 +38,7 @@ public class UpdateSupplierCommandHandler(
 {
     public async Task Handle(UpdateSupplierCommand request, CancellationToken cancellationToken)
     {
-        logger.LogInformation("Handling UpdateSupplierCommand for SupplierId={SupplierId}", request.SupplierId);
+        logger.LogDebug("Handling UpdateSupplierCommand for SupplierId={SupplierId}", request.SupplierId);
 
         using var context = contextFactory.CreateDbContext();
 
@@ -54,7 +54,15 @@ public class UpdateSupplierCommandHandler(
         // LastAuditDate is NOT modified — it's managed automatically by triggers / MarkAuditCompleted()
         entity.Update(request.Name, request.Country, request.Notes);
 
-        await context.SaveChangesAsync(cancellationToken);
+        try
+        {
+            await context.SaveChangesAsync(cancellationToken);
+        }
+        catch (Exception ex)
+        {
+            logger.LogError(ex, "Failed to update supplier {SupplierId}", request.SupplierId);
+            throw;
+        }
 
         logger.LogInformation("Successfully updated supplier {SupplierId} — new name: {Name}", request.SupplierId, request.Name);
     }

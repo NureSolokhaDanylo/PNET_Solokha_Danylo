@@ -48,45 +48,46 @@ public class CreateInventoryCommandHandler(
 {
     public async Task<int> Handle(CreateInventoryCommand request, CancellationToken cancellationToken)
     {
-        logger.LogInformation("Handling CreateInventoryCommand: MedicineId={MedicineId}, BatchNumber={BatchNumber}, Quantity={Quantity}",
+        logger.LogDebug("Handling CreateInventoryCommand: MedicineId={MedicineId}, BatchNumber={BatchNumber}, Quantity={Quantity}",
             request.MedicineId, request.BatchNumber, request.Quantity);
+
+        using var context = contextFactory.CreateDbContext();
+
+        var medicine = await context.Medicines.FindAsync(new object[] { request.MedicineId }, cancellationToken);
+        if (medicine == null)
+        {
+            logger.LogWarning("Medicine with ID {MedicineId} not found.", request.MedicineId);
+            throw new ArgumentException("Selected medicine does not exist.");
+        }
+
+        // Create inventory entry
+        var entity = new Inventory
+        {
+            MedicineId = request.MedicineId,
+            BatchNumber = request.BatchNumber,
+            ExpiryDate = request.ExpiryDate,
+            Quantity = request.Quantity,
+            Location = request.Location ?? "Main Shelf"
+        };
+
+        // Update medicine's total stock
+        medicine.SetStock(medicine.TotalStock + request.Quantity);
+
+        context.Inventories.Add(entity);
 
         try
         {
-            using var context = contextFactory.CreateDbContext();
-
-            var medicine = await context.Medicines.FindAsync(new object[] { request.MedicineId }, cancellationToken);
-            if (medicine == null)
-            {
-                logger.LogWarning("Medicine with ID {MedicineId} not found.", request.MedicineId);
-                throw new ArgumentException("Selected medicine does not exist.");
-            }
-
-            // Create inventory entry
-            var entity = new Inventory
-            {
-                MedicineId = request.MedicineId,
-                BatchNumber = request.BatchNumber,
-                ExpiryDate = request.ExpiryDate,
-                Quantity = request.Quantity,
-                Location = request.Location ?? "Main Shelf"
-            };
-
-            // Update medicine's total stock
-            medicine.SetStock(medicine.TotalStock + request.Quantity);
-
-            context.Inventories.Add(entity);
             await context.SaveChangesAsync(cancellationToken);
-
-            logger.LogInformation("Successfully created inventory item with ID {InventoryId} for medicine {MedicineName}.",
-                entity.InventoryId, medicine.Name);
-
-            return entity.InventoryId;
         }
         catch (Exception ex)
         {
             logger.LogError(ex, "Failed to create inventory item for Medicine ID {MedicineId}.", request.MedicineId);
             throw;
         }
+
+        logger.LogInformation("Successfully created inventory item with ID {InventoryId} for medicine {MedicineName}.",
+            entity.InventoryId, medicine.Name);
+
+        return entity.InventoryId;
     }
 }

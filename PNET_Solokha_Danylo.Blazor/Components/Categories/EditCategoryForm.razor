@@ -77,7 +77,6 @@
         try
         {
             await Mediator.Send(command);
-            Logger.LogInformation("Category {CategoryId} updated successfully via component.", CategoryId);
             await OnSaved.InvokeAsync();
         }
         catch (Exception ex)

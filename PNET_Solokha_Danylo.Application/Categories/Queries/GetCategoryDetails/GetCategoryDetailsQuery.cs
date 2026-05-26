@@ -44,7 +44,7 @@ public class GetCategoryDetailsQueryHandler(
 {
     public async Task<CategoryDetailsDto?> Handle(GetCategoryDetailsQuery request, CancellationToken cancellationToken)
     {
-        logger.LogInformation("Handling GetCategoryDetailsQuery for CategoryId={CategoryId}", request.CategoryId);
+        logger.LogDebug("Handling GetCategoryDetailsQuery for CategoryId={CategoryId}", request.CategoryId);
         
         using var context = contextFactory.CreateDbContext();
         

@@ -14,7 +14,7 @@ public class DeleteSupplierCommandHandler(
 {
     public async Task Handle(DeleteSupplierCommand request, CancellationToken cancellationToken)
     {
-        logger.LogInformation("Handling DeleteSupplierCommand for SupplierId={SupplierId}", request.SupplierId);
+        logger.LogDebug("Handling DeleteSupplierCommand for SupplierId={SupplierId}", request.SupplierId);
 
         using var context = contextFactory.CreateDbContext();
 

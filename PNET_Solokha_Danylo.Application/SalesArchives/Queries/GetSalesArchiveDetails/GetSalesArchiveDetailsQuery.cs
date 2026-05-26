@@ -35,7 +35,7 @@ public class GetSalesArchiveDetailsQueryHandler(
 {
     public async Task<SalesArchiveDetailsDto?> Handle(GetSalesArchiveDetailsQuery request, CancellationToken cancellationToken)
     {
-        logger.LogInformation("Handling GetSalesArchiveDetailsQuery for ArchiveId={ArchiveId}", request.ArchiveId);
+        logger.LogDebug("Handling GetSalesArchiveDetailsQuery for ArchiveId={ArchiveId}", request.ArchiveId);
         
         using var context = contextFactory.CreateDbContext();
         

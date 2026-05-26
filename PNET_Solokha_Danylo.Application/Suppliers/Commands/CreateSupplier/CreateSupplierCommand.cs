@@ -31,21 +31,22 @@ public class CreateSupplierCommandHandler(IApplicationDbContextFactory contextFa
 {
     public async Task<Unit> Handle(CreateSupplierCommand request, CancellationToken cancellationToken)
     {
-        logger.LogInformation("Handling CreateSupplierCommand for {Name} from {Country}", request.Name, request.Country);
-        
+        logger.LogDebug("Handling CreateSupplierCommand for {Name} from {Country}", request.Name, request.Country);
+
         try
         {
             using var context = contextFactory.CreateDbContext();
             // Using the stored procedure as requested
             await context.InsertSupplierAsync(request.Name, request.Country, request.Notes);
-            logger.LogInformation("Successfully inserted supplier {Name} via stored procedure", request.Name);
         }
         catch (Exception ex)
         {
             logger.LogError(ex, "Failed to insert supplier {Name} via stored procedure", request.Name);
             throw;
         }
-        
+
+        logger.LogInformation("Successfully inserted supplier {Name} via stored procedure", request.Name);
+
         return Unit.Value;
     }
 }

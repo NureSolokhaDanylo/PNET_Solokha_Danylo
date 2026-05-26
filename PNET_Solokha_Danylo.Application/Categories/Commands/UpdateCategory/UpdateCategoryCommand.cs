@@ -36,7 +36,7 @@ public class UpdateCategoryCommandHandler(
 {
     public async Task Handle(UpdateCategoryCommand request, CancellationToken cancellationToken)
     {
-        logger.LogInformation("Handling UpdateCategoryCommand for CategoryId={CategoryId}", request.CategoryId);
+        logger.LogDebug("Handling UpdateCategoryCommand for CategoryId={CategoryId}", request.CategoryId);
 
         using var context = contextFactory.CreateDbContext();
 
@@ -51,7 +51,15 @@ public class UpdateCategoryCommandHandler(
 
         entity.Update(request.Name, request.Description);
 
-        await context.SaveChangesAsync(cancellationToken);
+        try
+        {
+            await context.SaveChangesAsync(cancellationToken);
+        }
+        catch (Exception ex)
+        {
+            logger.LogError(ex, "Failed to update category {CategoryId}", request.CategoryId);
+            throw;
+        }
 
         logger.LogInformation("Successfully updated category {CategoryId} — new name: {Name}", request.CategoryId, request.Name);
     }

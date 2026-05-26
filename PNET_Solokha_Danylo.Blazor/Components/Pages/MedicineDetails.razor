@@ -445,7 +445,6 @@
 
     protected override async Task OnParametersSetAsync()
     {
-        Logger.LogInformation("Loading details for MedicineId={MedicineId}", MedicineId);
         isLoading = true;
         try
         {
@@ -520,7 +519,6 @@
         try
         {
             await Mediator.Send(new DeleteMedicineCommand(MedicineId));
-            Logger.LogInformation("Medicine {MedicineId} deleted successfully.", MedicineId);
             NavigationManager.NavigateTo("/medicines");
         }
         catch (Exception ex)

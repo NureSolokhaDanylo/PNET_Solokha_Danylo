@@ -14,7 +14,7 @@ public class DeleteInventoryCommandHandler(
 {
     public async Task Handle(DeleteInventoryCommand request, CancellationToken cancellationToken)
     {
-        logger.LogInformation("Handling DeleteInventoryCommand for InventoryId={InventoryId}", request.InventoryId);
+        logger.LogDebug("Handling DeleteInventoryCommand for InventoryId={InventoryId}", request.InventoryId);
 
         using var context = contextFactory.CreateDbContext();
 
@@ -32,7 +32,7 @@ public class DeleteInventoryCommandHandler(
 
         if (medicine is null)
         {
-            logger.LogError("Parent Medicine with ID {MedicineId} not found for inventory item {InventoryId}.", inventory.MedicineId, request.InventoryId);
+            logger.LogWarning("Parent Medicine with ID {MedicineId} not found for inventory item {InventoryId}.", inventory.MedicineId, request.InventoryId);
             throw new KeyNotFoundException($"Associated medicine with ID {inventory.MedicineId} was not found.");
         }
 
@@ -41,7 +41,15 @@ public class DeleteInventoryCommandHandler(
 
         context.Inventories.Remove(inventory);
 
-        await context.SaveChangesAsync(cancellationToken);
+        try
+        {
+            await context.SaveChangesAsync(cancellationToken);
+        }
+        catch (Exception ex)
+        {
+            logger.LogError(ex, "Failed to delete inventory item {InventoryId}.", request.InventoryId);
+            throw;
+        }
 
         logger.LogInformation("Successfully deleted inventory batch {InventoryId} — deducted quantity {Qty} from medicine {MedicineName}.",
             request.InventoryId, inventory.Quantity, medicine.Name);

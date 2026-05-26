@@ -21,7 +21,7 @@ public class GetCategoriesQueryHandler(
 {
     public async Task<CategoryQueryResult> Handle(GetCategoriesQuery request, CancellationToken cancellationToken)
     {
-        logger.LogInformation("Handling GetCategoriesQuery: SearchTerm={SearchTerm}, Skip={Skip}, Take={Take}",
+        logger.LogDebug("Handling GetCategoriesQuery: SearchTerm={SearchTerm}, Skip={Skip}, Take={Take}",
             request.SearchTerm, request.Skip, request.Take);
 
         using var context = contextFactory.CreateDbContext();

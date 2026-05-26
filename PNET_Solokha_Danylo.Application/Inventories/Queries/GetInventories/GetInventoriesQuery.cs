@@ -37,55 +37,47 @@ public class GetInventoriesQueryHandler(
 {
     public async Task<InventoryQueryResult> Handle(GetInventoriesQuery request, CancellationToken cancellationToken)
     {
-        logger.LogInformation("Handling GetInventoriesQuery: SearchTerm={SearchTerm}, MedicineId={MedicineId}, Skip={Skip}, Take={Take}",
+        logger.LogDebug("Handling GetInventoriesQuery: SearchTerm={SearchTerm}, MedicineId={MedicineId}, Skip={Skip}, Take={Take}",
             request.SearchTerm, request.MedicineId, request.Skip, request.Take);
 
-        try
+        using var context = contextFactory.CreateDbContext();
+
+        var baseQuery = from inv in context.Inventories
+                        join med in context.Medicines on inv.MedicineId equals med.MedicineId
+                        select new InventoryDto
+                        {
+                            InventoryId = inv.InventoryId,
+                            MedicineId = inv.MedicineId,
+                            MedicineName = med.Name,
+                            BatchNumber = inv.BatchNumber,
+                            Quantity = inv.Quantity,
+                            ExpiryDate = inv.ExpiryDate,
+                            Location = inv.Location
+                        };
+
+        // Applying filters
+        if (request.MedicineId.HasValue && request.MedicineId.Value > 0)
         {
-            using var context = contextFactory.CreateDbContext();
-
-            var baseQuery = from inv in context.Inventories
-                            join med in context.Medicines on inv.MedicineId equals med.MedicineId
-                            select new InventoryDto
-                            {
-                                InventoryId = inv.InventoryId,
-                                MedicineId = inv.MedicineId,
-                                MedicineName = med.Name,
-                                BatchNumber = inv.BatchNumber,
-                                Quantity = inv.Quantity,
-                                ExpiryDate = inv.ExpiryDate,
-                                Location = inv.Location
-                            };
-
-            // Applying filters
-            if (request.MedicineId.HasValue && request.MedicineId.Value > 0)
-            {
-                baseQuery = baseQuery.Where(x => x.MedicineId == request.MedicineId.Value);
-            }
-
-            if (!string.IsNullOrWhiteSpace(request.SearchTerm))
-            {
-                var term = request.SearchTerm.Trim().ToLower();
-                baseQuery = baseQuery.Where(x =>
-                    x.BatchNumber.ToLower().Contains(term) ||
-                    (x.Location != null && x.Location.ToLower().Contains(term)));
-            }
-
-            int totalCount = await baseQuery.CountAsync(cancellationToken);
-
-            var items = await baseQuery
-                .OrderBy(x => x.ExpiryDate)
-                .Skip(request.Skip)
-                .Take(request.Take)
-                .ToListAsync(cancellationToken);
-
-            logger.LogInformation("Successfully fetched {Count} (out of {Total}) Inventory items.", items.Count, totalCount);
-            return new InventoryQueryResult(items, totalCount);
+            baseQuery = baseQuery.Where(x => x.MedicineId == request.MedicineId.Value);
         }
-        catch (Exception ex)
+
+        if (!string.IsNullOrWhiteSpace(request.SearchTerm))
         {
-            logger.LogError(ex, "Error occurred while handling GetInventoriesQuery.");
-            throw;
+            var term = request.SearchTerm.Trim().ToLower();
+            baseQuery = baseQuery.Where(x =>
+                x.BatchNumber.ToLower().Contains(term) ||
+                (x.Location != null && x.Location.ToLower().Contains(term)));
         }
+
+        int totalCount = await baseQuery.CountAsync(cancellationToken);
+
+        var items = await baseQuery
+            .OrderBy(x => x.ExpiryDate)
+            .Skip(request.Skip)
+            .Take(request.Take)
+            .ToListAsync(cancellationToken);
+
+        logger.LogDebug("Successfully fetched {Count} (out of {Total}) Inventory items.", items.Count, totalCount);
+        return new InventoryQueryResult(items, totalCount);
     }
 }

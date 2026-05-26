@@ -30,25 +30,25 @@ public class CreateCategoryCommandHandler(IApplicationDbContextFactory contextFa
 {
     public async Task<int> Handle(CreateCategoryCommand request, CancellationToken cancellationToken)
     {
-        logger.LogInformation("Handling CreateCategoryCommand for {Name}", request.Name);
-        
+        logger.LogDebug("Handling CreateCategoryCommand for {Name}", request.Name);
+
+        using var context = contextFactory.CreateDbContext();
+        var entity = new Category(request.Name, request.Description);
+
+        context.Categories.Add(entity);
+
         try
         {
-            using var context = contextFactory.CreateDbContext();
-            var entity = new Category(request.Name, request.Description);
-
-            context.Categories.Add(entity);
-
             await context.SaveChangesAsync(cancellationToken);
-            
-            logger.LogInformation("Successfully created category {Name} with ID {Id}", request.Name, entity.CategoryId);
-
-            return entity.CategoryId;
         }
         catch (Exception ex)
         {
             logger.LogError(ex, "Failed to create category {Name}", request.Name);
             throw;
         }
+
+        logger.LogInformation("Successfully created category {Name} with ID {Id}", request.Name, entity.CategoryId);
+
+        return entity.CategoryId;
     }
 }

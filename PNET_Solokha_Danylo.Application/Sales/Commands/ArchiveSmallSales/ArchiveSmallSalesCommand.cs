@@ -16,18 +16,19 @@ public class ArchiveSmallSalesCommandHandler(
 {
     public async Task Handle(ArchiveSmallSalesCommand request, CancellationToken cancellationToken)
     {
-        logger.LogInformation("Handling ArchiveSmallSalesCommand: CategoryId={CategoryId}, LimitK={LimitK}", request.CategoryId, request.LimitK);
+        logger.LogDebug("Handling ArchiveSmallSalesCommand: CategoryId={CategoryId}, LimitK={LimitK}", request.CategoryId, request.LimitK);
 
         try
         {
             using var context = contextFactory.CreateDbContext();
             await context.ArchiveSmallSalesByCategoryAsync(request.CategoryId, request.LimitK);
-            logger.LogInformation("Successfully executed stored procedure to archive small sales for CategoryId={CategoryId} with k={LimitK}.", request.CategoryId, request.LimitK);
         }
         catch (Exception ex)
         {
             logger.LogError(ex, "Failed to execute archiving for Category ID {CategoryId} with limit k={LimitK}.", request.CategoryId, request.LimitK);
             throw;
         }
+
+        logger.LogInformation("Successfully executed stored procedure to archive small sales for CategoryId={CategoryId} with k={LimitK}.", request.CategoryId, request.LimitK);
     }
 }

@@ -37,25 +37,25 @@ public class CreateMedicineCommandHandler(IApplicationDbContextFactory contextFa
 {
     public async Task<int> Handle(CreateMedicineCommand request, CancellationToken cancellationToken)
     {
-        logger.LogInformation("Handling CreateMedicineCommand for {Name}", request.Name);
-        
+        logger.LogDebug("Handling CreateMedicineCommand for {Name}", request.Name);
+
+        using var context = contextFactory.CreateDbContext();
+        var entity = new Medicine(request.Name, request.CategoryId, request.SupplierId, request.BasePrice);
+
+        context.Medicines.Add(entity);
+
         try
         {
-            using var context = contextFactory.CreateDbContext();
-            var entity = new Medicine(request.Name, request.CategoryId, request.SupplierId, request.BasePrice);
-
-            context.Medicines.Add(entity);
-
             await context.SaveChangesAsync(cancellationToken);
-            
-            logger.LogInformation("Successfully created medicine {Name} with ID {Id}", request.Name, entity.MedicineId);
-
-            return entity.MedicineId;
         }
         catch (Exception ex)
         {
             logger.LogError(ex, "Failed to create medicine {Name}", request.Name);
             throw;
         }
+
+        logger.LogInformation("Successfully created medicine {Name} with ID {Id}", request.Name, entity.MedicineId);
+
+        return entity.MedicineId;
     }
 }

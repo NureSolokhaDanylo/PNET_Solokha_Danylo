@@ -22,7 +22,7 @@ public class GetSuppliersQueryHandler(
 {
     public async Task<SupplierQueryResult> Handle(GetSuppliersQuery request, CancellationToken cancellationToken)
     {
-        logger.LogInformation("Handling GetSuppliersQuery: SearchTerm={SearchTerm}, Country={Country}, Skip={Skip}, Take={Take}",
+        logger.LogDebug("Handling GetSuppliersQuery: SearchTerm={SearchTerm}, Country={Country}, Skip={Skip}, Take={Take}",
             request.SearchTerm, request.Country, request.Skip, request.Take);
 
         using var context = contextFactory.CreateDbContext();

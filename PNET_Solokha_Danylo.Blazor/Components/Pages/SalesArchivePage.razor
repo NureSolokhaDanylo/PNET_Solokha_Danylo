@@ -245,7 +245,6 @@
 
     protected override async Task OnInitializedAsync()
     {
-        Logger.LogInformation("Initializing SalesArchivePage component.");
         await FetchData();
     }
 
@@ -271,8 +270,6 @@
             archives = result.Items;
             totalCount = result.TotalCount;
             
-            Logger.LogInformation("Fetched {Count} archives (Total {Total}).",
-                archives?.Count ?? 0, totalCount);
         }
         catch (Exception ex)
         {

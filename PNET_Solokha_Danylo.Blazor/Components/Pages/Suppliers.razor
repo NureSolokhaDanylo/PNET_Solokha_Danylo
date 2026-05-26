@@ -213,7 +213,6 @@
 
     protected override async Task OnInitializedAsync()
     {
-        Logger.LogInformation("Initializing Suppliers page.");
         await FetchData();
     }
 
@@ -238,8 +237,6 @@
             suppliers = result.Items;
             totalCount = result.TotalCount;
 
-            Logger.LogInformation("Fetched {Count} suppliers (Total {Total}).",
-                suppliers?.Count ?? 0, totalCount);
         }
         catch (Exception ex)
         {
@@ -257,12 +254,10 @@
     {
         showSuccessAlert = false;
         errorMessage = null;
-        Logger.LogInformation("Submitting CreateSupplierCommand for {Name} from {Country}.", command.Name, command.Country);
 
         try
         {
             await Mediator.Send(command);
-            Logger.LogInformation("Supplier added successfully.");
             
             command = new();
             showSuccessAlert = true;

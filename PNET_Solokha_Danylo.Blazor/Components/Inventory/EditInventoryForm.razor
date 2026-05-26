@@ -96,7 +96,6 @@
         try
         {
             await Mediator.Send(command);
-            Logger.LogInformation("Inventory item {InventoryId} updated successfully via component.", InventoryId);
             await OnSaved.InvokeAsync();
         }
         catch (Exception ex)

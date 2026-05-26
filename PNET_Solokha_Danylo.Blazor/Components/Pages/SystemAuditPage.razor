@@ -285,7 +285,6 @@
 
     protected override async Task OnInitializedAsync()
     {
-        Logger.LogInformation("Initializing SystemAuditPage component.");
         await FetchData();
     }
 
@@ -312,8 +311,6 @@
             audits = result.Items;
             totalCount = result.TotalCount;
             
-            Logger.LogInformation("Fetched {Count} SystemAudits (Total {TotalCount}).", 
-                audits?.Count ?? 0, totalCount);
         }
         catch (Exception ex)
         {
