@@ -19,7 +19,6 @@ public interface IApplicationDbContext : IDisposable
     IQueryable<SupplierStockValue> GetSupplierStockValue();
 
     // Scalar Function
-    int CountExpensiveMedicines(string country);
     Task<int> GetExpensiveMedicinesCountAsync(string country, CancellationToken cancellationToken);
     
     // Stored Procedures

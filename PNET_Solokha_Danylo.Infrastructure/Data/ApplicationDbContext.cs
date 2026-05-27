@@ -19,8 +19,6 @@ public class ApplicationDbContext(DbContextOptions<ApplicationDbContext> options
         => Set<SupplierStockValue>();
 
     // Scalar Function
-    public int CountExpensiveMedicines(string country)
-        => throw new NotSupportedException();
 
     public async Task<int> GetExpensiveMedicinesCountAsync(string country, CancellationToken cancellationToken)
     {
@@ -44,8 +42,6 @@ public class ApplicationDbContext(DbContextOptions<ApplicationDbContext> options
         base.OnModelCreating(builder);
 
         // Map Functions
-        builder.HasDbFunction(typeof(ApplicationDbContext).GetMethod(nameof(CountExpensiveMedicines), new[] { typeof(string) })!)
-            .HasName("fn_CountExpensiveMedicines");
 
         builder.Entity<SupplierStockValue>(entity =>
         {
